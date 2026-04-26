@@ -1,0 +1,962 @@
+/* ── Page ──────────────────────────────────────────────────── */
+.page {
+  width: 100dvw;
+  height: 100dvh;
+  overflow: hidden;
+  position: relative;
+  background: #050508;
+  font-family: 'DM Sans', sans-serif;
+}
+
+/* ── Viewer ─────────────────────────────────────────────────── */
+.psvWrapper { position: absolute; inset: 0; }
+.psvA { position: absolute; inset: 0; z-index: 2; }
+.psvB { position: absolute; inset: 0; z-index: 1; }
+.psvLoader {
+  position: absolute; inset: 0; z-index: 5;
+  display: flex; align-items: center; justify-content: center;
+  background: #050508;
+}
+.spinner {
+  width: 32px; height: 32px;
+  border: 2px solid rgba(255,255,255,.15);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+  display: inline-block;
+}
+@keyframes spin { to { transform: rotate(360deg) } }
+
+/* ── Header haut gauche ─────────────────────────────────────── */
+.topLeft {
+  position: absolute;
+  top: 16px; left: 16px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(0,0,0,.45);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 10px;
+  padding: 8px 14px;
+  max-width: 260px;
+}
+
+.logo {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 15px;
+  color: #fff;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.logo span { color: #3d7bff; }
+
+.customLogo {
+  height: 28px;
+  width: auto;
+  max-width: 80px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.projectNameTop {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255,255,255,.85);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Outils navigation haut droite ─────────────────────────── */
+.topRight {
+  position: absolute;
+  top: 16px; right: 16px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.navTool {
+  width: 40px; height: 40px;
+  background: rgba(0,0,0,.45);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  color: rgba(255,255,255,.8);
+  cursor: pointer;
+  transition: all .2s ease;
+}
+.navTool:hover   { background: rgba(255,255,255,.15); color: #fff; border-color: rgba(255,255,255,.3); }
+.navToolActive   { background: #3d7bff !important; border-color: #3d7bff !important; color: #fff !important; }
+
+/* ── Bandeau scènes ─────────────────────────────────────────── */
+.sceneStrip {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  z-index: 10;
+  /* Apparaît au survol du bas de la fenêtre */
+  transform: translateY(calc(100% - 6px));
+  transition: transform .35s cubic-bezier(.4,0,.2,1);
+  /* Indicateur visible (petite barre) */
+}
+.sceneStrip::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 50%; transform: translateX(-50%);
+  width: 40px; height: 4px;
+  background: rgba(255,255,255,.4);
+  border-radius: 99px;
+  transition: opacity .2s;
+}
+.sceneStrip:hover,
+.page:has(.sceneStrip:hover) .sceneStrip,
+.sceneStrip:focus-within {
+  transform: translateY(0);
+}
+/* Zone de déclenchement invisible en bas */
+.sceneStripVisible {
+  transform: translateY(0) !important;
+}
+.sceneStripHidden {
+  transform: translateY(100%) !important;
+  pointer-events: none;
+}
+/* Zone de déclenchement invisible en bas */
+.sceneStrip::after {
+  content: '';
+  position: absolute;
+  bottom: 100%; left: 0; right: 0;
+  height: 40px;  /* zone de détection hover */
+  cursor: default;
+}
+
+.sceneStripInner {
+  background: rgba(0,0,0,.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid rgba(255,255,255,.1);
+  padding: 12px 16px 16px;
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.sceneStripInner::-webkit-scrollbar { display: none; }
+
+.sceneThumbBtn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform .2s ease;
+}
+.sceneThumbBtn:hover { transform: translateY(-3px); }
+
+.sceneThumbImg {
+  width: 96px; height: 60px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 2px solid rgba(255,255,255,.15);
+  position: relative;
+  background: #1a1f2e;
+  display: flex; align-items: center; justify-content: center;
+  transition: border-color .2s;
+}
+.sceneThumbImg img {
+  width: 100%; height: 100%; object-fit: cover;
+}
+.sceneThumbImg span { color: rgba(255,255,255,.3); font-size: 20px; }
+.sceneThumbBtnActive .sceneThumbImg { border-color: #3d7bff; }
+
+.sceneThumbActive {
+  position: absolute; inset: 0;
+  background: rgba(61,123,255,.2);
+  border-radius: 6px;
+}
+
+.sceneThumbName {
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(255,255,255,.7);
+  white-space: nowrap;
+  max-width: 96px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sceneThumbBtnActive .sceneThumbName { color: #fff; font-weight: 700; }
+
+/* ── Panel info ─────────────────────────────────────────────── */
+.infoPanel {
+  position: absolute;
+  top: 72px; left: 16px;
+  background: rgba(0,0,0,.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 12px;
+  padding: 20px;
+  color: #fff;
+  max-width: 280px;
+  z-index: 10;
+  animation: fadeUp .2s ease both;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+@keyframes fadeUp { from { opacity:0; transform:translateY(8px) } to { opacity:1; transform:translateY(0) } }
+
+.infoPanelClose {
+  position: absolute; top: 10px; right: 10px;
+  background: none; border: none;
+  color: rgba(255,255,255,.5); cursor: pointer; font-size: 12px;
+}
+.infoPanelClose:hover { color: #fff; }
+
+.infoPanelLogo {
+  height: 32px; width: auto; max-width: 120px;
+  object-fit: contain; margin-bottom: 4px;
+}
+
+.infoPanel h2 {
+  font-family: 'Syne', sans-serif;
+  font-size: 16px; font-weight: 700; margin: 0;
+}
+.infoPanel p  { font-size: 13px; color: rgba(255,255,255,.7); margin: 0; }
+.infoScenes   { font-size: 12px; color: rgba(255,255,255,.4); }
+
+/* ── Pages loading/error ─────────────────────────────────────── */
+.loading {
+  width: 100dvw; height: 100dvh;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 16px; background: #050508;
+  color: rgba(255,255,255,.6); font-size: 14px;
+  font-family: 'Syne', sans-serif;
+}
+.errorPage {
+  width: 100dvw; height: 100dvh;
+  display: flex; align-items: center; justify-content: center;
+  background: #050508;
+}
+.errorCard { text-align: center; color: #fff; }
+.errorTitle {
+  font-family: 'Syne', sans-serif;
+  font-size: 36px; font-weight: 800; margin-bottom: 16px;
+}
+.errorTitle span { color: #3d7bff; }
+.errorMsg { font-size: 15px; color: rgba(255,255,255,.5); }
+
+/* ── Splash screen ───────────────────────────────────────────── */
+.splash {
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  background: #000;   /* fond noir pur */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Disparition douce et lente vers la visite */
+  transition: opacity 1.4s ease, transform 1.4s ease;
+}
+
+.splashOut {
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(1.06);
+}
+
+.splashReady { cursor: pointer; }
+.splashReady .splashContent {
+  animation: splashPulse 2s ease-in-out infinite;
+}
+@keyframes splashPulse {
+  0%,100% { transform: scale(1); }
+  50%      { transform: scale(1.01); }
+}
+
+.splashContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  animation: splashIn 1.2s cubic-bezier(.16,1,.3,1) both;
+}
+
+@keyframes splashIn {
+  from { opacity: 0; transform: scale(.9); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* Image splash dédiée — zoom lent depuis le centre */
+.splashImage {
+  width: auto;
+  max-width: min(560px, 80vw);
+  max-height: 60vh;
+  object-fit: contain;
+  animation: splashZoomSlow 3.8s cubic-bezier(.16,1,.3,1) both;
+}
+
+/* Logo classique si pas d'image splash */
+.splashLogo {
+  width: auto;
+  max-width: 260px;
+  object-fit: contain;
+  animation: splashZoomSlow 3.8s cubic-bezier(.16,1,.3,1) both;
+}
+
+/* Zoom très progressif : part petit, grossit lentement */
+@keyframes splashZoomSlow {
+  0%   { transform: scale(.75); opacity: 0; }
+  15%  { opacity: 1; }
+  100% { transform: scale(1.06); opacity: 1; }
+}
+
+.splashDefaultLogo {
+  font-family: 'Syne', sans-serif;
+  font-size: 64px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -0.04em;
+  animation: splashZoomSlow 3.8s cubic-bezier(.16,1,.3,1) both;
+}
+.splashDefaultLogo span { color: #3d7bff; }
+
+.splashName {
+  font-size: 18px;
+  font-weight: 500;
+  color: rgba(255,255,255,.6);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  animation: splashFadeSlow 1.6s ease .8s both;
+}
+
+@keyframes splashFadeSlow {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.splashBar {
+  width: 200px;
+  height: 1px;
+  background: rgba(255,255,255,.1);
+  border-radius: 99px;
+  overflow: hidden;
+  animation: splashFadeSlow 1s ease 1s both;
+}
+
+.splashBarFill {
+  height: 100%;
+  background: rgba(255,255,255,.5);
+  border-radius: 99px;
+  /* Barre qui remplit pendant toute la durée du splash */
+  animation: splashProgress 3.5s cubic-bezier(.4,0,.6,1) .5s both;
+}
+
+@keyframes splashProgress {
+  from { width: 0%; }
+  to   { width: 100%; }
+}
+
+/* ── Bouton tap ──────────────────────────────────────────────── */
+.splashTapBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,255,255,.12);
+  border: 1px solid rgba(255,255,255,.25);
+  border-radius: 99px;
+  padding: 10px 22px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  animation: splashFadeSlow 1s ease both;
+  backdrop-filter: blur(8px);
+  transition: background .2s, border-color .2s;
+}
+.splashReady:active .splashTapBtn {
+  background: rgba(255,255,255,.25);
+  border-color: rgba(255,255,255,.6);
+}
+
+/* ── Hint de mouvement ───────────────────────────────────────── */
+.moveHint {
+  position: absolute;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 15;
+  cursor: pointer;
+  animation: hintIn .6s ease both, hintOut .6s ease 3.4s both;
+  pointer-events: auto;
+}
+
+@keyframes hintIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+@keyframes hintOut {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+.moveHintInner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  background: rgba(0,0,0,.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,.15);
+  border-radius: 16px;
+  padding: 16px 24px;
+}
+
+.moveHintIcon {
+  width: 80px;
+  height: 40px;
+  animation: hintSwipe 1.5s ease-in-out infinite;
+}
+
+@keyframes hintSwipe {
+  0%,100% { transform: translateX(0); }
+  25%      { transform: translateX(-6px); }
+  75%      { transform: translateX(6px); }
+}
+
+.moveHintInner span {
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255,255,255,.85);
+  white-space: nowrap;
+}
+
+/* ── Toggle switch autorotation ──────────────────────────────── */
+
+/* ── Code d'accès ────────────────────────────────────────────── */
+.accessOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(0,0,0,.4);
+  backdrop-filter: blur(2px);
+  animation: fadeIn .3s ease both;
+}
+
+.accessCard {
+  background: rgba(10,12,20,.92);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 20px;
+  padding: 36px 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  max-width: 340px;
+  width: 100%;
+  box-shadow: 0 24px 60px rgba(0,0,0,.6);
+  backdrop-filter: blur(20px);
+  animation: slideUp .35s cubic-bezier(.16,1,.3,1) both;
+}
+
+.accessIcon {
+  font-size: 40px;
+  line-height: 1;
+}
+
+.accessTitle {
+  font-family: 'Syne', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+}
+
+.accessDesc {
+  font-size: 14px;
+  color: rgba(255,255,255,.6);
+  text-align: center;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.accessInput {
+  width: 100%;
+  background: rgba(255,255,255,.08);
+  border: 1.5px solid rgba(255,255,255,.2);
+  border-radius: 10px;
+  padding: 14px;
+  font-size: 22px;
+  font-family: monospace;
+  font-weight: 700;
+  color: #fff;
+  text-align: center;
+  letter-spacing: 0.2em;
+  outline: none;
+  transition: border-color .2s;
+}
+.accessInput:focus { border-color: #3d7bff; }
+.accessInput::placeholder { color: rgba(255,255,255,.2); letter-spacing: 0.1em; font-size: 16px; }
+
+.accessInputError {
+  border-color: #ef4444 !important;
+  animation: shake .3s ease both;
+}
+
+@keyframes shake {
+  0%,100% { transform: translateX(0); }
+  20%,60% { transform: translateX(-6px); }
+  40%,80% { transform: translateX(6px); }
+}
+
+.accessError {
+  font-size: 13px;
+  color: #ef4444;
+  margin: -6px 0 0;
+}
+
+.accessBtn {
+  width: 100%;
+  background: #3d7bff;
+  border: none;
+  border-radius: 10px;
+  padding: 14px;
+  font-size: 15px;
+  font-weight: 700;
+  font-family: 'Syne', sans-serif;
+  color: #fff;
+  cursor: pointer;
+  transition: opacity .2s;
+  margin-top: 4px;
+}
+.accessBtn:hover { opacity: .88; }
+
+/* ── Popup info hotspot ──────────────────────────────────────── */
+.infoPopupOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(0,0,0,.5);
+  backdrop-filter: blur(4px);
+  animation: fadeIn .2s ease both;
+}
+
+.infoPopupCard {
+  background: rgba(10,12,20,.95);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 16px;
+  max-width: 380px;
+  width: 100%;
+  overflow: hidden;
+  box-shadow: 0 24px 60px rgba(0,0,0,.6);
+  animation: slideUp .25s cubic-bezier(.16,1,.3,1) both;
+  position: relative;
+}
+
+.infoPopupClose {
+  position: absolute;
+  top: 10px; right: 10px;
+  background: rgba(0,0,0,.5);
+  border: 1px solid rgba(255,255,255,.15);
+  border-radius: 50%;
+  width: 28px; height: 28px;
+  display: flex; align-items: center; justify-content: center;
+  color: rgba(255,255,255,.7);
+  cursor: pointer;
+  font-size: 11px;
+  z-index: 1;
+  transition: background .2s;
+}
+.infoPopupClose:hover { background: rgba(255,255,255,.15); color: #fff; }
+
+.infoPopupImg {
+  width: 100%;
+  max-height: 220px;
+  object-fit: cover;
+  display: block;
+}
+
+.infoPopupBody {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.infoPopupTitle {
+  font-family: 'Syne', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+}
+
+.infoPopupText {
+  font-size: 14px;
+  color: rgba(255,255,255,.75);
+  line-height: 1.6;
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.infoPopupLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #3d7bff;
+  color: #fff;
+  text-decoration: none;
+  padding: 9px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  align-self: flex-start;
+  transition: opacity .2s;
+  margin-top: 4px;
+}
+.infoPopupLink:hover { opacity: .88; }
+
+/* ── Hover preview hotspot info ──────────────────────────────── */
+.hoverPreview {
+  position: absolute;
+  bottom: 90px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 25;
+  background: rgba(10,12,20,.92);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 12px;
+  max-width: 280px;
+  width: max-content;
+  overflow: hidden;
+  box-shadow: 0 12px 40px rgba(0,0,0,.5);
+  cursor: pointer;
+  animation: hoverIn .2s cubic-bezier(.16,1,.3,1) both;
+  backdrop-filter: blur(16px);
+  pointer-events: auto;
+}
+
+@keyframes hoverIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.hoverPreview:hover { border-color: rgba(255,255,255,.25); }
+
+.hoverPreviewImg {
+  width: 100%;
+  max-height: 140px;
+  object-fit: cover;
+  display: block;
+}
+
+.hoverPreviewBody {
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.hoverPreviewTitle {
+  font-family: 'Syne', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+}
+
+.hoverPreviewText {
+  font-size: 12px;
+  color: rgba(255,255,255,.65);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.hoverPreviewHint {
+  font-size: 11px;
+  color: #3d7bff;
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+/* ── Bouton contact ──────────────────────────────────────────── */
+.contactBtn {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0,0,0,.65);
+  backdrop-filter: blur(12px);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,.2);
+  border-radius: 99px;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .2s, transform .2s;
+  user-select: none;
+}
+.contactBtn:hover { background: rgba(0,0,0,.85); transform: translateX(-50%) translateY(-2px); }
+
+/* ── Modal contact ───────────────────────────────────────────── */
+.contactOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(0,0,0,.5);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0 0 24px;
+}
+.contactModal {
+  background: var(--surface, #1a1a2e);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 20px;
+  width: min(480px, 95vw);
+  overflow: hidden;
+  animation: slideUp .25s ease;
+}
+@keyframes slideUp {
+  from { transform: translateY(40px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+.contactHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+.contactTitle {
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+}
+.contactClose {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,.5);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+.contactTabs {
+  display: flex;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+.contactTab {
+  flex: 1;
+  background: none;
+  border: none;
+  color: rgba(255,255,255,.5);
+  padding: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color .2s, border-color .2s;
+  border-bottom: 2px solid transparent;
+}
+.contactTabActive {
+  color: #fff;
+  border-bottom-color: var(--accent, #c17f3e);
+}
+.contactDirect {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.contactLink {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 10px;
+  padding: 14px 16px;
+  color: #fff;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background .2s;
+}
+.contactLink:hover { background: rgba(255,255,255,.1); }
+.contactForm {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.contactInput, .contactTextarea {
+  background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 8px;
+  padding: 10px 14px;
+  color: #fff;
+  font-size: 14px;
+  width: 100%;
+  box-sizing: border-box;
+  outline: none;
+  font-family: inherit;
+}
+.contactInput::placeholder, .contactTextarea::placeholder { color: rgba(255,255,255,.35); }
+.contactTextarea { resize: vertical; min-height: 90px; }
+.contactError { font-size: 13px; color: #ff6b6b; }
+.contactSend {
+  background: var(--accent, #c17f3e);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity .2s;
+}
+.contactSend:disabled { opacity: .5; cursor: not-allowed; }
+.contactSent {
+  padding: 32px 20px;
+  text-align: center;
+  color: #fff;
+}
+.contactSentIcon {
+  width: 48px; height: 48px;
+  background: #22c55e;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  margin: 0 auto 16px;
+}
+.contactSentHint { font-size: 13px; color: rgba(255,255,255,.5); margin-top: 6px; }
+
+/* ── Galerie modal ───────────────────────────────────────────── */
+.galleryModal {
+  position: relative;
+  width: min(90vw, 800px);
+  max-height: 85vh;
+  background: #000;
+  border-radius: 16px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.galleryModalImg {
+  width: 100%;
+  max-height: 85vh;
+  object-fit: contain;
+  display: block;
+}
+.galleryPrev, .galleryNext {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0,0,0,.6);
+  border: none;
+  color: #fff;
+  font-size: 28px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .2s;
+  z-index: 2;
+}
+.galleryPrev { left: 12px; }
+.galleryNext { right: 12px; }
+.galleryPrev:hover, .galleryNext:hover { background: rgba(0,0,0,.85); }
+.galleryDots {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  z-index: 2;
+}
+.galleryDot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.4);
+  border: none;
+  cursor: pointer;
+  transition: background .2s;
+}
+.galleryDotActive { background: #fff; }
+.galleryCounter {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,.5);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 99px;
+  z-index: 2;
+}
+
+/* ── Volume control ──────────────────────────────────────────── */
+.volumeWrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.volumePanel {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,.75);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,.15);
+  border-radius: 10px;
+  padding: 10px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+}
+.volumeSlider {
+  writing-mode: vertical-lr;
+  direction: rtl;
+  width: 24px;
+  height: 80px;
+  cursor: pointer;
+  accent-color: #fff;
+}

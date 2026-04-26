@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body { font-family: monospace; background: #000; color: #0f0; padding: 20px; font-size: 18px; }
+  .val { margin: 10px 0; padding: 10px; background: #111; border-radius: 8px; }
+  .label { color: #888; font-size: 14px; }
+  .big { font-size: 32px; font-weight: bold; }
+  button { font-size: 20px; padding: 15px 30px; margin: 10px; border-radius: 10px; background:#333; color:#fff; border:none; }
+  #status { color: yellow; margin-bottom: 20px; font-size: 20px; }
+</style>
+</head>
+<body>
+<div id="status">Appuyez sur START</div>
+<button onclick="startGyro()">▶ START</button>
+
+<div class="val">
+  <div class="label">beta (axe X)</div>
+  <div class="big" id="b">—</div>
+</div>
+<div class="val">
+  <div class="label">gamma (axe Y)</div>
+  <div class="big" id="g">—</div>
+</div>
+<div class="val" style="background:#1a1a00">
+  <div class="label">➡ Faites ces 3 tests et notez les valeurs :</div>
+  <div style="font-size:15px;color:#ff0;line-height:2">
+    📱 Posé à plat écran HAUT → beta = ?<br>
+    📱 Tenu VERTICAL face à vous → beta = ?<br>
+    📱 Pointé vers le SOL → beta = ?
+  </div>
+</div>
+
+<script>
+function startGyro() {
+  if (typeof DeviceOrientationEvent?.requestPermission === 'function') {
+    DeviceOrientationEvent.requestPermission().then(p => {
+      if (p === 'granted') listen()
+      else document.getElementById('status').textContent = '❌ Permission refusée'
+    }).catch(() => listen())
+  } else { listen() }
+}
+function listen() {
+  document.getElementById('status').textContent = '✅ Actif — bougez le téléphone'
+  window.addEventListener('deviceorientation', e => {
+    document.getElementById('b').textContent = (e.beta  ?? 0).toFixed(1) + '°'
+    document.getElementById('g').textContent = (e.gamma ?? 0).toFixed(1) + '°'
+  }, { passive: true })
+}
+</script>
+</body>
+</html>

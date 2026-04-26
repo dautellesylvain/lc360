@@ -1,0 +1,130 @@
+.root { padding: 0; }
+
+.loading {
+  display: flex; justify-content: center; align-items: center;
+  height: 200px;
+}
+.spinner {
+  width: 28px; height: 28px;
+  border: 3px solid var(--surface-2);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.empty {
+  text-align: center;
+  padding: 48px 24px;
+  color: var(--text-3);
+}
+.emptyIcon { font-size: 40px; margin-bottom: 12px; }
+.emptyHint { font-size: 13px; margin-top: 6px; opacity: .7; }
+
+/* ── KPIs ── */
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.kpi {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.kpiValue {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--text-1);
+  line-height: 1;
+}
+.kpiLabel {
+  font-size: 12px;
+  color: var(--text-3);
+  font-weight: 500;
+}
+
+/* ── Grid ── */
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.card {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+}
+.cardFull { grid-column: 1 / -1; }
+.cardTitle {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-1);
+  margin-bottom: 16px;
+}
+.noData { font-size: 13px; color: var(--text-3); }
+
+/* ── Bars ── */
+.barList { display: flex; flex-direction: column; gap: 10px; }
+.barItem {
+  display: grid;
+  grid-template-columns: 1fr 120px 32px;
+  align-items: center;
+  gap: 10px;
+}
+.barLabel {
+  font-size: 13px;
+  color: var(--text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.barTrack {
+  height: 6px;
+  background: var(--surface-3, #333);
+  border-radius: 99px;
+  overflow: hidden;
+}
+.barFill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 99px;
+  transition: width .4s ease;
+}
+.barCount {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-3);
+  text-align: right;
+}
+
+/* ── Visit list ── */
+.visitList { overflow-x: auto; }
+.visitHeader, .visitRow {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
+  gap: 8px;
+  padding: 8px 0;
+  font-size: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.visitHeader {
+  color: var(--text-3);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.visitRow { color: var(--text-2); }
+.visitRow:last-child { border-bottom: none; }
+
+@media (max-width: 640px) {
+  .kpis { grid-template-columns: 1fr 1fr; }
+  .grid { grid-template-columns: 1fr; }
+  .cardFull { grid-column: 1; }
+}

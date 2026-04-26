@@ -1,0 +1,562 @@
+/* ── PSV Hotspot Markers — partagé entre ProjectViewer et PublicViewer ── */
+
+.psv-marker-nav { display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; animation: float 2s ease-in-out infinite; opacity: var(--hs-opacity, 1); }
+.psv-marker-icon    { color: var(--hs-color, #3d7bff); filter: drop-shadow(0 2px 6px rgba(0,0,0,.7)); display:flex; align-items:center; justify-content:center; }
+.psv-marker-icon svg  { width: 26px; height: 26px; }
+.psv-marker-icon-sm   { color: var(--hs-color, #3d7bff); display:flex; align-items:center; justify-content:center; }
+.psv-marker-icon-sm svg { width: 20px; height: 20px; }
+.psv-marker-text {
+  background: rgba(0,0,0,.75);
+  color: var(--hs-color, #fff);
+  padding: 3px 8px;
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  backdrop-filter: blur(4px);
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity .2s ease, transform .2s ease;
+  pointer-events: none;
+}
+.psv-marker-nav:hover .psv-marker-text,
+.psv-marker-info:hover .psv-marker-text {
+  opacity: 1;
+  transform: translateY(0);
+}
+.psv-marker-info { display: flex; align-items: center; gap: 5px; cursor: default; opacity: var(--hs-opacity, 1); }
+.psv-marker-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--hs-color, #3d7bff); box-shadow: 0 0 0 3px color-mix(in srgb, var(--hs-color, #3d7bff) 30%, transparent); }
+@keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+
+/* ── Couleur + Opacité ───────────────────────────────────────── */
+.colorRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.colorPicker {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 0;
+  cursor: pointer;
+  background: none;
+  flex-shrink: 0;
+}
+.colorPicker::-webkit-color-swatch-wrapper { padding: 0; }
+.colorPicker::-webkit-color-swatch { border: 1px solid var(--border); border-radius: 6px; }
+
+.colorPresets {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.colorPreset {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform var(--transition), border-color var(--transition);
+  flex-shrink: 0;
+}
+.colorPreset:hover { transform: scale(1.15); }
+.colorPresetActive { border-color: var(--text-1) !important; transform: scale(1.1); }
+
+.colorHex {
+  font-size: 12px;
+  color: var(--text-2);
+  font-family: monospace;
+}
+
+.opacityRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.slider {
+  flex: 1;
+  accent-color: var(--accent);
+}
+
+/* Prévisualisation hotspot en temps réel */
+.hotspotPreview {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 90px;
+  height: 40px;
+  background: rgba(0,0,0,.4);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.previewMarkerNav {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  opacity: var(--hs-opacity, 1);
+}
+
+.previewArrow {
+  font-size: 14px;
+  color: var(--hs-color, #3d7bff);
+  line-height: 1;
+}
+
+.previewText {
+  background: rgba(0,0,0,.7);
+  color: var(--hs-color, #3d7bff);
+  padding: 1px 5px;
+  border-radius: 99px;
+  font-size: 9px;
+  font-weight: 600;
+  white-space: nowrap;
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Point coloré dans sidebar */
+.hotspotDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Angle info */
+.arrivalAngleInfo {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.angleDisplay { display: flex; gap: 16px; }
+.angleDisplay span { font-size: 13px; color: var(--text-2); }
+.angleDisplay strong { color: var(--accent); }
+
+/* ── Sélecteur d'icônes ──────────────────────────────────────── */
+.iconGrid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+}
+
+.iconBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  aspect-ratio: 1;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--text-2);
+  transition: all var(--transition);
+  padding: 6px;
+}
+
+.iconBtn svg { width: 18px; height: 18px; }
+
+.iconBtn:hover {
+  border-color: var(--accent);
+  background: var(--accent-glow);
+  color: var(--accent);
+}
+
+.iconBtnActive {
+  border-color: currentColor !important;
+  background: var(--accent-glow) !important;
+  transform: scale(1.05);
+}
+
+/* Preview icône dans opacité */
+.previewIconWrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: var(--hs-opacity, 1);
+}
+
+.previewIconWrap svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* ── Style grid ──────────────────────────────────────────────── */
+.styleGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+}
+
+.styleBtn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 8px 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-align: left;
+  transition: all var(--transition);
+}
+.styleBtn:hover { border-color: var(--accent); }
+.styleBtnActive { border-color: var(--accent) !important; background: var(--accent-glow) !important; }
+
+.styleBtnLabel {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-1);
+}
+.styleBtnDesc {
+  font-size: 11px;
+  color: var(--text-2);
+}
+
+/* ── PSV : style floor (cercle au sol) ───────────────────────── */
+.psv-marker-floor {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  cursor: pointer;
+  opacity: var(--hs-opacity, 1);
+}
+
+/* Label EN HAUT */
+.psv-floor-label {
+  background: rgba(0,0,0,.75);
+  color: var(--hs-color, #fff);
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-size: calc(11px * var(--hs-size, 1));
+  font-weight: 600;
+  white-space: nowrap;
+  backdrop-filter: blur(4px);
+  order: 1;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity .2s ease, transform .2s ease;
+  pointer-events: none;
+}
+.psv-marker-floor:hover .psv-floor-label {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Icône EN BAS du label, AU DESSUS de l'anneau — 20% plus grande */
+.psv-floor-icon {
+  color: var(--hs-color, #3d7bff);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,.6));
+  animation: floorFloat 2.5s ease-in-out infinite;
+  order: 2;
+  transform: scale(1.2);
+  margin: 2px 0;
+}
+
+/* Anneau tout en bas */
+.psv-floor-ring {
+  width: calc(60px * var(--hs-ring-size, 1));
+  height: calc(20px * var(--hs-ring-size, 1));
+  border-radius: 50%;
+  border: 2px solid var(--hs-color, #3d7bff);
+  background: color-mix(in srgb, var(--hs-color, #3d7bff) 15%, transparent);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--hs-color, #3d7bff) 50%, transparent);
+  animation: floorPulse 2s ease-in-out infinite;
+  position: relative;
+  order: 3;
+  margin-top: 1px;
+}
+
+.psv-floor-ring::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--hs-color, #3d7bff) 40%, transparent);
+  animation: floorPulse 2s ease-in-out infinite 0.3s;
+}
+
+@keyframes floorPulse {
+  0%,100% { transform: scaleX(1);    opacity: 1; }
+  50%      { transform: scaleX(1.12); opacity: 0.7; }
+}
+
+@keyframes floorFloat {
+  0%,100% { transform: translateY(0); }
+  50%      { transform: translateY(-5px); }
+}
+
+/* ── PSV : style pin ─────────────────────────────────────────── */
+.psv-marker-pin {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  opacity: var(--hs-opacity, 1);
+  gap: 0;
+}
+
+.psv-pin-head {
+  background: var(--hs-color, #3d7bff);
+  color: #fff;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  width: calc(36px * var(--hs-size, 1));
+  height: calc(36px * var(--hs-size, 1));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 3px 10px rgba(0,0,0,.4);
+  animation: pinBounce 2s ease-in-out infinite;
+}
+
+.psv-pin-head svg {
+  transform: rotate(45deg);
+}
+
+.psv-pin-stem {
+  width: 2px;
+  height: calc(10px * var(--hs-size, 1));
+  background: var(--hs-color, #3d7bff);
+  opacity: 0.8;
+}
+
+.psv-pin-dot {
+  width: calc(6px * var(--hs-size, 1));
+  height: calc(6px * var(--hs-size, 1));
+  border-radius: 50%;
+  background: rgba(0,0,0,.3);
+  filter: blur(1px);
+}
+
+.psv-marker-pin .psv-marker-text {
+  margin-top: 3px;
+  background: rgba(0,0,0,.75);
+  color: #fff;
+  padding: 2px 7px;
+  border-radius: 99px;
+  font-size: calc(11px * var(--hs-size, 1));
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity .2s ease, transform .2s ease;
+  pointer-events: none;
+}
+.psv-marker-pin:hover .psv-marker-text {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@keyframes pinBounce {
+  0%,100% { transform: rotate(-45deg) translateY(0); }
+  50%      { transform: rotate(-45deg) translateY(-3px); }
+}
+
+/* ── PSV : style bubble ──────────────────────────────────────── */
+.psv-marker-bubble {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--hs-color, #3d7bff);
+  color: #fff;
+  padding: calc(6px * var(--hs-size, 1)) calc(12px * var(--hs-size, 1));
+  border-radius: 99px;
+  cursor: pointer;
+  opacity: var(--hs-opacity, 1);
+  box-shadow: 0 3px 12px rgba(0,0,0,.4);
+  animation: bubblePop 2.5s ease-in-out infinite;
+  white-space: nowrap;
+}
+
+.psv-bubble-icon svg {
+  display: block;
+}
+
+.psv-bubble-text {
+  font-size: calc(12px * var(--hs-size, 1));
+  font-weight: 700;
+  max-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: max-width .25s ease, opacity .2s ease;
+  white-space: nowrap;
+}
+.psv-marker-bubble:hover .psv-bubble-text {
+  max-width: 200px;
+  opacity: 1;
+}
+
+@keyframes bubblePop {
+  0%,100% { transform: scale(1); }
+  50%      { transform: scale(1.05); }
+}
+
+/* ── Drag hotspot ────────────────────────────────────────────── */
+.psv-marker[data-dragging] {
+  cursor: grabbing !important;
+  filter: drop-shadow(0 4px 12px rgba(0,0,0,.6));
+  transform: scale(1.1);
+  transition: transform .1s ease;
+}
+
+/* ── Nouvelle modal hotspot ──────────────────────────────────── */
+.modalNew {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  max-width: 480px;
+  max-height: 92dvh;
+  display: flex;
+  flex-direction: column;
+  animation: slideUp .25s ease both;
+  overflow: hidden; /* important : empêche le débordement */
+}
+
+.modalNewWide { max-width: 860px; }
+
+/* Header fixe */
+.modalHeaderFixed {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  background: var(--surface);
+  z-index: 2;
+}
+
+/* Corps scrollable */
+.modalNewBody {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.modalParams {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 20px;
+  overflow-y: auto;
+  flex: 0 0 340px;
+  min-width: 0;
+}
+
+/* Prévisualisation hotspot en temps réel */
+.livePreview {
+  flex-shrink: 0;
+}
+
+.livePreviewBg {
+  background: #1a1f2e;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  min-height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Grille simulant un panorama */
+.livePreviewBg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* Sliders taille + opacité côte à côte */
+.sliderGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+}
+
+/* Footer fixe */
+.modalFooterFixed {
+  display: flex;
+  gap: 8px;
+  padding: 12px 20px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+  background: var(--surface);
+  flex-wrap: wrap;
+}
+
+.modalFooterFixed .modalCancel  { flex: 1; min-width: 80px; }
+.modalFooterFixed .modalConfirm { flex: 2; min-width: 120px; }
+.modalFooterFixed .modalDelete  { flex: 1; min-width: 80px; }
+.modalFooterFixed .modalDeleteConfirm { flex: 1; min-width: 80px; }
+
+/* ── Color picker amélioré ───────────────────────────────────── */
+.colorCustomRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+}
+
+.colorSwatch {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.colorHexInput {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  font-size: 13px;
+  font-family: monospace;
+  color: var(--text-1);
+  letter-spacing: 0.05em;
+}
+
+.colorHexLabel {
+  font-size: 11px;
+  color: var(--text-3);
+  font-family: monospace;
+  letter-spacing: 0.05em;
+}
+
