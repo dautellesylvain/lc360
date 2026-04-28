@@ -1,3 +1,7 @@
+export default defineConfig({
+  base: '/lc360/',
+  // ... le reste de ta config existante
+})
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { resolve } from 'path'
