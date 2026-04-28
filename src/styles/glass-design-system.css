@@ -1,0 +1,500 @@
+/* ═══════════════════════════════════════════════════════════════
+   LC360 V3 — Glass Design System
+   Système de design glassmorphism pour l'éditeur de visite virtuelle
+   ═══════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ── Glass Surfaces (panneaux translucides) ───────────────── */
+  --glass-bg-primary:    rgba(14, 14, 14, 0.55);
+  --glass-bg-secondary:  rgba(20, 20, 28, 0.65);
+  --glass-bg-elevated:   rgba(28, 28, 38, 0.75);
+  --glass-bg-hover:      rgba(40, 40, 52, 0.65);
+
+  /* ── Glass Borders (bordures fines) ───────────────────────── */
+  --glass-border:        rgba(255, 255, 255, 0.08);
+  --glass-border-strong: rgba(255, 255, 255, 0.14);
+  --glass-border-accent: rgba(0, 85, 255, 0.35);
+
+  /* ── Glass Effects (blur premium) ─────────────────────────── */
+  --glass-blur:          blur(20px) saturate(180%);
+  --glass-blur-strong:   blur(32px) saturate(200%);
+  --glass-blur-light:    blur(12px) saturate(150%);
+
+  /* ── Glass Shadows (élévation) ────────────────────────────── */
+  --glass-shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.25);
+  --glass-shadow-md: 0 8px 24px rgba(0, 0, 0, 0.35), 0 2px 6px rgba(0, 0, 0, 0.2);
+  --glass-shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.45), 0 4px 12px rgba(0, 0, 0, 0.25);
+  --glass-shadow-glow: 0 0 24px rgba(0, 85, 255, 0.25);
+
+  /* ── Electric Blue Accent (couleur signature) ─────────────── */
+  --accent-blue:         #0055FF;
+  --accent-blue-hover:   #1a6cff;
+  --accent-blue-glow:    rgba(0, 85, 255, 0.18);
+  --accent-blue-soft:    rgba(0, 85, 255, 0.08);
+
+  /* ── Action Colors (sémantiques) ──────────────────────────── */
+  --action-success:      #10b981;
+  --action-warning:      #f59e0b;
+  --action-danger:       #ef4444;
+  --action-purple:       #a855f7;
+
+  /* ── Typography Scale ─────────────────────────────────────── */
+  --text-xs:   11px;
+  --text-sm:   12px;
+  --text-base: 13px;
+  --text-md:   14px;
+  --text-lg:   16px;
+  --text-xl:   18px;
+
+  --tracking-tight:  -0.01em;
+  --tracking-normal:  0;
+  --tracking-wide:    0.04em;
+  --tracking-wider:   0.08em;
+  --tracking-widest:  0.12em;
+
+  /* ── Radius (cohérent V3) ─────────────────────────────────── */
+  --glass-radius-sm:  8px;
+  --glass-radius-md:  12px;
+  --glass-radius-lg:  16px;
+  --glass-radius-xl:  20px;
+
+  /* ── Motion (animations fluides) ──────────────────────────── */
+  --motion-fast:    150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --motion-base:    220ms cubic-bezier(0.4, 0, 0.2, 1);
+  --motion-slow:    320ms cubic-bezier(0.4, 0, 0.2, 1);
+  --motion-spring:  400ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   GLASS PANEL — Composant de base réutilisable
+   ═══════════════════════════════════════════════════════════════ */
+
+.glassPanel {
+  background: var(--glass-bg-primary);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--glass-radius-lg);
+  box-shadow: var(--glass-shadow-md);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Reflet subtil en haut du panneau (effet premium) */
+.glassPanel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.15) 50%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+
+/* Variante avec bordure plus marquée */
+.glassPanelElevated {
+  background: var(--glass-bg-elevated);
+  backdrop-filter: var(--glass-blur-strong);
+  -webkit-backdrop-filter: var(--glass-blur-strong);
+  border: 1px solid var(--glass-border-strong);
+  box-shadow: var(--glass-shadow-lg);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   GLASS BUTTONS — Boutons translucides
+   ═══════════════════════════════════════════════════════════════ */
+
+.glassBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--glass-bg-secondary);
+  backdrop-filter: var(--glass-blur-light);
+  -webkit-backdrop-filter: var(--glass-blur-light);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--glass-radius-sm);
+  padding: 10px 16px;
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  cursor: pointer;
+  transition: all var(--motion-base);
+  white-space: nowrap;
+}
+
+.glassBtn:hover {
+  background: var(--glass-bg-hover);
+  border-color: var(--glass-border-strong);
+  transform: translateY(-1px);
+  box-shadow: var(--glass-shadow-md);
+}
+
+.glassBtn:active {
+  transform: translateY(0);
+}
+
+/* Variante primaire (bleu électrique) */
+.glassBtnPrimary {
+  background: var(--accent-blue);
+  border-color: var(--accent-blue);
+  box-shadow: 0 4px 12px var(--accent-blue-glow), var(--glass-shadow-sm);
+  color: #fff;
+}
+
+.glassBtnPrimary:hover {
+  background: var(--accent-blue-hover);
+  border-color: var(--accent-blue-hover);
+  box-shadow: 0 8px 20px rgba(0, 85, 255, 0.4), var(--glass-shadow-md);
+}
+
+/* Variante danger */
+.glassBtnDanger {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+}
+
+.glassBtnDanger:hover {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: rgba(239, 68, 68, 0.5);
+  color: #fff;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   GLASS BUTTON — Le gros "+" pour ajouter panorama
+   ═══════════════════════════════════════════════════════════════ */
+
+.addPanoBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 64px;
+  background: linear-gradient(
+    135deg,
+    var(--accent-blue-soft) 0%,
+    rgba(0, 85, 255, 0.02) 100%
+  );
+  backdrop-filter: var(--glass-blur-light);
+  -webkit-backdrop-filter: var(--glass-blur-light);
+  border: 1.5px dashed var(--glass-border-accent);
+  border-radius: var(--glass-radius-md);
+  color: var(--accent-blue);
+  cursor: pointer;
+  transition: all var(--motion-base);
+  position: relative;
+  overflow: hidden;
+}
+
+.addPanoBtn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at center,
+    var(--accent-blue-glow) 0%,
+    transparent 70%
+  );
+  opacity: 0;
+  transition: opacity var(--motion-base);
+}
+
+.addPanoBtn:hover {
+  border-color: var(--accent-blue);
+  border-style: solid;
+  background: var(--accent-blue-soft);
+  transform: scale(1.02);
+  box-shadow: var(--glass-shadow-glow);
+}
+
+.addPanoBtn:hover::after {
+  opacity: 1;
+}
+
+.addPanoBtn svg {
+  width: 32px;
+  height: 32px;
+  position: relative;
+  z-index: 1;
+  transition: transform var(--motion-spring);
+}
+
+.addPanoBtn:hover svg {
+  transform: rotate(90deg) scale(1.1);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   GLASS HOTSPOT PANEL — Panel à droite (apparition contextuelle)
+   ═══════════════════════════════════════════════════════════════ */
+
+.hotspotPanel {
+  position: absolute;
+  top: 64px;
+  right: 16px;
+  width: 280px;
+  max-height: calc(100% - 96px);
+  z-index: 20;
+  background: var(--glass-bg-elevated);
+  backdrop-filter: var(--glass-blur-strong);
+  -webkit-backdrop-filter: var(--glass-blur-strong);
+  border: 1px solid var(--glass-border-strong);
+  border-radius: var(--glass-radius-lg);
+  box-shadow: var(--glass-shadow-lg);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: slideInRight var(--motion-spring) both;
+  pointer-events: auto;
+}
+
+.hotspotPanel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.2) 50%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.hotspotPanelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.hotspotPanelTitle {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: var(--tracking-widest);
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.hotspotPanelCount {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  padding: 2px 8px;
+  background: var(--accent-blue-soft);
+  color: var(--accent-blue);
+  border-radius: 10px;
+}
+
+.hotspotPanelBody {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px;
+}
+
+/* Hotspot Item dans le panel */
+.glassHotspotItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--glass-radius-sm);
+  cursor: pointer;
+  transition: all var(--motion-fast);
+  border: 1px solid transparent;
+}
+
+.glassHotspotItem:hover {
+  background: var(--glass-bg-hover);
+  border-color: var(--glass-border);
+  transform: translateX(2px);
+}
+
+.glassHotspotItem + .glassHotspotItem {
+  margin-top: 2px;
+}
+
+.glassHotspotIcon {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent-blue-soft);
+  border-radius: 8px;
+  color: var(--accent-blue);
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.glassHotspotInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.glassHotspotLabel {
+  display: block;
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.glassHotspotMeta {
+  display: block;
+  font-size: var(--text-xs);
+  color: rgba(255, 255, 255, 0.5);
+  margin-top: 2px;
+}
+
+.glassHotspotActions {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity var(--motion-fast);
+}
+
+.glassHotspotItem:hover .glassHotspotActions {
+  opacity: 1;
+}
+
+.glassHotspotAction {
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid var(--glass-border);
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  font-size: 11px;
+  transition: all var(--motion-fast);
+}
+
+.glassHotspotAction:hover {
+  background: var(--glass-bg-hover);
+  color: rgba(255, 255, 255, 0.95);
+  border-color: var(--glass-border-strong);
+}
+
+.glassHotspotActionDanger:hover {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   FOOTER TOOLBAR — Boutons en bas de la sidebar (V3)
+   ═══════════════════════════════════════════════════════════════ */
+
+.footerToolbar {
+  padding: 10px;
+  border-top: 1px solid var(--glass-border);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.footerToolBtn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--glass-bg-secondary);
+  backdrop-filter: var(--glass-blur-light);
+  -webkit-backdrop-filter: var(--glass-blur-light);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--glass-radius-sm);
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+  transition: all var(--motion-base);
+  text-align: left;
+}
+
+.footerToolBtn:hover {
+  background: var(--glass-bg-hover);
+  border-color: var(--glass-border-strong);
+  color: #fff;
+  transform: translateX(2px);
+}
+
+.footerToolBtn svg,
+.footerToolBtnIcon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  opacity: 0.8;
+}
+
+/* Variante avec accent purple (Modifier le plan) */
+.footerToolBtnPurple {
+  background: rgba(168, 85, 247, 0.08);
+  border-color: rgba(168, 85, 247, 0.25);
+  color: #d8b4fe;
+}
+
+.footerToolBtnPurple:hover {
+  background: rgba(168, 85, 247, 0.15);
+  border-color: rgba(168, 85, 247, 0.4);
+  color: #f3e8ff;
+}
+
+/* Variante active (édition activée) */
+.footerToolBtnActive {
+  background: rgba(16, 185, 129, 0.15) !important;
+  border-color: rgba(16, 185, 129, 0.4) !important;
+  color: #6ee7b7 !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SCROLLBAR — Style cohérent dans tous les panels glass
+   ═══════════════════════════════════════════════════════════════ */
+
+.hotspotPanelBody::-webkit-scrollbar,
+.glassPanel::-webkit-scrollbar {
+  width: 6px;
+}
+
+.hotspotPanelBody::-webkit-scrollbar-track,
+.glassPanel::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.hotspotPanelBody::-webkit-scrollbar-thumb,
+.glassPanel::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+.hotspotPanelBody::-webkit-scrollbar-thumb:hover,
+.glassPanel::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}

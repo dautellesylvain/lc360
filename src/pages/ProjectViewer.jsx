@@ -10,7 +10,9 @@ import styles from './ProjectViewer.module.css'
 import EditProjectModal from './EditProjectModal'
 import ElfsightChat from '@components/ElfsightChat'
 import NodeEditor   from '@components/NodeEditor'
+import HotspotPanel from '@components/HotspotPanel'
 import '@styles/psv-markers.css'
+import '@styles/glass-design-system.css'
 
 let ViewerClass   = null
 let MarkersPlugin = null
@@ -191,7 +193,6 @@ export default function ProjectViewer() {
   const projectRef     = useRef(null)
   const activeSceneRef = useRef(0)
   const currentPosRef  = useRef({ yaw: 0, pitch: 0 })
-  const [debugPos,       setDebugPos]       = useState({ yaw: 0, pitch: 0 })
   const [floorplanOpen,  setFloorplanOpen]  = useState(false)
   const currentSceneId   = project?.scenes?.[activeScene]?.id
   const [floorplanEditor, setFloorplanEditor] = useState(false)
@@ -362,7 +363,6 @@ export default function ProjectViewer() {
 
         viewerB.addEventListener('position-updated', (e) => {
           currentPosRef.current = { yaw: e.position.yaw, pitch: e.position.pitch }
-          setDebugPos({ yaw: e.position.yaw, pitch: e.position.pitch })
         })
 
         const cBEl = cB
@@ -910,6 +910,22 @@ export default function ProjectViewer() {
           </button>
         </div>
 
+        {/* ── V3 : Gros bouton "+" pour ajouter un panorama ── */}
+        <div className={styles.addPanoWrap}>
+          <button
+            data-tour="add-scene"
+            className={styles.addPanoBtn}
+            onClick={() => setUploadModal(true)}
+            title="Ajouter un panorama"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="22" height="22">
+              <line x1="12" y1="5" x2="12" y2="19"/>
+              <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            <span>Ajouter un panorama</span>
+          </button>
+        </div>
+
         <div data-tour="scene-list" className={styles.sceneList}>
           {scenes.map((scene, i) => (
             <div
@@ -989,46 +1005,35 @@ export default function ProjectViewer() {
           ))}
         </div>
 
-        {current && (current.hotspots || []).length > 0 && (
-          <div className={styles.hotspotList}>
-            <p className={styles.hotspotListTitle}>Hotspots</p>
-            {(current.hotspots || []).map(h => (
-              <div key={h.id} className={styles.hotspotItem}>
-                <span className={styles.hotspotDot} style={{ background: h.color || 'var(--accent)', opacity: h.opacity ?? 1 }} />
-                <span className={styles.hotspotIcon}>{h.type === 'navigation' ? '→' : h.type === 'info' ? 'ℹ' : h.type === 'video' ? '▶' : h.type === 'gallery' ? '🖼' : h.type === 'audio' ? '🔊' : 'ℹ'}</span>
-                <span className={styles.hotspotLabel} title={h.label}>{h.label}</span>
-                <div className={styles.hotspotActions}>
-                  {['info','video','gallery','audio','url'].includes(h.type) && (
-                    <button className={styles.hotspotEdit}
-                      title="Prévisualiser"
-                      onClick={() => {
-                        if (h.type === 'info')    setInfoFullPopup(h)
-                        if (h.type === 'video')   setVideoPopup(h)
-                        if (h.type === 'gallery') { setGalleryIdx(0); setGalleryPopup(h) }
-                        if (h.type === 'audio')   setAudioPopup(h)
-                        if (h.type === 'url' && h.urlHref) window.open(h.urlHref, '_blank', 'noopener')
-                      }}>👁</button>
-                  )}
-                  <button className={styles.hotspotEdit} onClick={() => setHotspotModal({ ...h, editing: true })} title="Modifier">✏</button>
-                  <button className={styles.hotspotDelete}
-                    onClick={() => setHotspotModal({ ...h, editing: true, confirmDelete: true })}
-                    title="Supprimer">✕</button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        {/* ── V3 : La liste des hotspots est maintenant dans le panel glass à droite ── */}
 
         <div className={styles.sidebarFooter}>
           {floorplan && (
             <button
+              className={styles.footerToolBtnPurple}
               onClick={() => setFloorplanEditor(true)}
-              style={{width:'100%', padding:'8px', borderRadius:8, border:'1px solid rgba(152,0,255,.4)', background:'rgba(152,0,255,.1)', color:'#c084fc', fontSize:13, fontWeight:700, cursor:'pointer', marginBottom:8}}
+              title="Modifier le plan de la visite"
             >
-              🗺 Modifier le plan
+              <span className={styles.footerToolIcon}>🗺</span>
+              <span>Modifier le plan</span>
             </button>
           )}
-          <button data-tour="add-scene" className={styles.addSceneBtn} onClick={() => setUploadModal(true)}>+ Ajouter une scène</button>
+          <button
+            className={styles.footerToolBtn}
+            onClick={() => setShowProjectSettings(true)}
+            title="Paramètres de la visite"
+          >
+            <span className={styles.footerToolIcon}>⚙</span>
+            <span>Paramètres de la visite</span>
+          </button>
+          <button
+            className={`${styles.footerToolBtn} ${editMode ? styles.footerToolBtnActive : ''}`}
+            onClick={() => setEditMode(v => !v)}
+            title="Déplacer les hotspots"
+          >
+            <span className={styles.footerToolIcon}>{editMode ? '✓' : '🎯'}</span>
+            <span>{editMode ? 'Fin édition' : 'Déplacer les hotspots'}</span>
+          </button>
           <Link to="/dashboard" className={styles.backLink}>← Dashboard</Link>
         </div>
       </aside>
@@ -1055,10 +1060,7 @@ export default function ProjectViewer() {
               <span className={styles.navCount}>{activeScene + 1} / {scenes.length}</span>
               <button className={styles.navBtn} onClick={() => switchScene(Math.min(scenes.length - 1, activeScene + 1))} disabled={activeScene === scenes.length - 1}>›</button>
             </div>
-            <button className={`${styles.editBtn} ${editMode ? styles.editBtnActive : ''}`} onClick={() => setEditMode(v => !v)}>
-              {editMode ? '✓ Fin édition' : '✏ Éditer hotspots'}
-            </button>
-            <button className={styles.editBtn} onClick={() => setShowProjectSettings(true)} title="Paramètres du projet" style={{background:'#1d4ed8'}}>⚙ Paramètres</button>
+            {/* ── V3 : Boutons "Éditer hotspots" et "Paramètres" déplacés dans le footer de la sidebar ── */}
           </div>
         )}
         {editMode && (
@@ -1089,6 +1091,23 @@ export default function ProjectViewer() {
             </div>
           )}
         </div>
+
+        {/* ── V3 : Panel glass des hotspots à droite du viewer ── */}
+        {hasScenes && current && (current.hotspots || []).length > 0 && (
+          <HotspotPanel
+            sceneName={current.name || `Scène ${activeScene + 1}`}
+            hotspots={current.hotspots || []}
+            onEditHotspot={(h) => setHotspotModal({ ...h, editing: true })}
+            onPreviewHotspot={(h) => {
+              if (h.type === 'info')    setInfoFullPopup(h)
+              if (h.type === 'video')   setVideoPopup(h)
+              if (h.type === 'gallery') { setGalleryIdx(0); setGalleryPopup(h) }
+              if (h.type === 'audio')   setAudioPopup(h)
+              if (h.type === 'url' && h.urlHref) window.open(h.urlHref, '_blank', 'noopener')
+            }}
+            onDeleteHotspot={(h) => setHotspotModal({ ...h, editing: true, confirmDelete: true })}
+          />
+        )}
       </div>
 
       {uploadModal && project && <UploadModal project={project} allProjects={allProjects} isPRO={isPRO} onClose={() => setUploadModal(false)} />}
@@ -1281,31 +1300,43 @@ export default function ProjectViewer() {
           </div>
         </div>
       )}
-      {/* Plan overlay */}
+      {/* Plan overlay — V3 : déplacé en bas à droite, icône SVG carte */}
       {floorplan && (
         <>
           <button
             onClick={() => setFloorplanOpen(o => !o)}
             style={{
-              position:'fixed', bottom:16, left:16, zIndex:1000,
-              background: floorplanOpen ? '#1d4ed8' : 'rgba(0,0,0,.7)',
-              color:'#fff', border:'1px solid rgba(255,255,255,.2)',
-              borderRadius:10, padding:'8px 14px', fontSize:13,
-              fontWeight:700, cursor:'pointer', backdropFilter:'blur(8px)',
-              display:'flex', alignItems:'center', gap:6,
+              position:'fixed', bottom:16, right:16, zIndex:1000,
+              background: floorplanOpen ? '#0055FF' : 'rgba(20,20,28,0.75)',
+              color:'#fff', border:'1px solid rgba(255,255,255,.14)',
+              borderRadius:10, padding:'10px 16px', fontSize:13,
+              fontWeight:600, cursor:'pointer',
+              backdropFilter:'blur(20px) saturate(180%)',
+              WebkitBackdropFilter:'blur(20px) saturate(180%)',
+              display:'flex', alignItems:'center', gap:8,
+              boxShadow: floorplanOpen
+                ? '0 8px 24px rgba(0,85,255,0.35), 0 2px 6px rgba(0,0,0,0.3)'
+                : '0 4px 12px rgba(0,0,0,0.3)',
+              transition: 'all 220ms cubic-bezier(0.4,0,0.2,1)',
             }}
           >
-            🗺 {floorplanOpen ? 'Fermer le plan' : 'Plan'}
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 20l-5.447-2.724A1 1 0 0 1 3 16.382V5.618a1 1 0 0 1 1.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0 0 21 18.382V7.618a1 1 0 0 0-.553-.894L15 4m0 13V4m-6 3l6-3"/>
+            </svg>
+            {floorplanOpen ? 'Fermer le plan' : 'Plan'}
           </button>
 
           {floorplanOpen && (
             <div style={{
-              position:'fixed', bottom:60, left:16, zIndex:999,
+              position:'fixed', bottom:64, right:16, zIndex:999,
               width:280, height:280, borderRadius:12,
-              overflow:'hidden', border:'2px solid rgba(255,255,255,.15)',
-              boxShadow:'0 8px 32px rgba(0,0,0,.6)',
-              backdropFilter:'blur(8px)',
-              background:'#0f1117',
+              overflow:'hidden',
+              border:'1px solid rgba(255,255,255,.14)',
+              boxShadow:'0 16px 48px rgba(0,0,0,.5), 0 4px 12px rgba(0,0,0,.3)',
+              backdropFilter:'blur(20px) saturate(180%)',
+              WebkitBackdropFilter:'blur(20px) saturate(180%)',
+              background:'rgba(15,17,23,0.85)',
+              animation: 'slideInRight 320ms cubic-bezier(0.34,1.56,0.64,1)',
             }}>
               <div style={{position:'relative', width:'100%', height:'100%'}}>
                 <img
@@ -1348,10 +1379,6 @@ export default function ProjectViewer() {
         </>
       )}
 
-      {/* Debug position overlay — retirer après les tests */}
-      <div style={{position:'fixed',bottom:8,left:8,background:'rgba(0,0,0,.7)',color:'#0f0',fontFamily:'monospace',fontSize:11,padding:'4px 8px',borderRadius:4,zIndex:9999,pointerEvents:'none'}}>
-        yaw: {(debugPos.yaw * 180 / Math.PI).toFixed(1)}° | pitch: {(debugPos.pitch * 180 / Math.PI).toFixed(1)}°
-      </div>
       {showProjectSettings && project && (
         <ProjectSettingsInline
           project={project}
