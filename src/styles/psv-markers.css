@@ -275,8 +275,8 @@
 
 /* Anneau tout en bas */
 .psv-floor-ring {
-  width: calc(60px * var(--hs-size, 1));
-  height: calc(20px * var(--hs-size, 1));
+  width: calc(60px * var(--hs-ring-size, 1));
+  height: calc(20px * var(--hs-ring-size, 1));
   border-radius: 50%;
   border: 2px solid var(--hs-color, #3d7bff);
   background: color-mix(in srgb, var(--hs-color, #3d7bff) 15%, transparent);
@@ -306,7 +306,204 @@
   50%      { transform: translateY(-5px); }
 }
 
-/* ── PSV : style pin ─────────────────────────────────────────── */
+/* ── PSV : style floor-dot (pulse ellipse) ───────────────────── */
+.psv-marker-floor-dot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  opacity: var(--hs-opacity, 1);
+}
+.psv-floor-dot-label {
+  background: rgba(0,0,0,.75);
+  color: var(--hs-color, #fff);
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-size: calc(11px * var(--hs-size, 1));
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity .2s, transform .2s;
+  pointer-events: none;
+}
+.psv-marker-floor-dot:hover .psv-floor-dot-label { opacity: 1; transform: translateY(0); }
+.psv-floor-dot-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.psv-floor-dot-p1 {
+  position: absolute;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--hs-color, #3d7bff) 70%, transparent);
+  animation: floorDotPulse1 1.8s ease-out infinite;
+}
+.psv-floor-dot-p2 {
+  position: absolute;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--hs-color, #3d7bff) 50%, transparent);
+  animation: floorDotPulse1 2s ease-out infinite 0.5s;
+}
+.psv-floor-dot-center {
+  position: relative;
+  z-index: 2;
+  background: var(--hs-color, #3d7bff);
+  border-radius: 50%;
+}
+@keyframes floorDotPulse1 {
+  0%   { transform: scale(1);   opacity: .7; }
+  100% { transform: scale(3.2); opacity: 0;  }
+}
+
+/* ── PSV : style floor-sonar ─────────────────────────────────── */
+.psv-marker-floor-sonar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  opacity: var(--hs-opacity, 1);
+}
+.psv-floor-sonar-label {
+  background: rgba(0,0,0,.75);
+  color: var(--hs-color, #fff);
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-size: calc(11px * var(--hs-size, 1));
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity .2s, transform .2s;
+  pointer-events: none;
+}
+.psv-marker-floor-sonar:hover .psv-floor-sonar-label { opacity: 1; transform: translateY(0); }
+.psv-floor-sonar-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.psv-floor-sonar-w1 {
+  position: absolute;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--hs-color, #3d7bff) 35%, transparent);
+  animation: floorDotPulse1 2.4s ease-out infinite 0s;
+}
+.psv-floor-sonar-w2 {
+  position: absolute;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--hs-color, #3d7bff) 50%, transparent);
+  animation: floorDotPulse1 2.4s ease-out infinite 0.8s;
+}
+.psv-floor-sonar-w3 {
+  position: absolute;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--hs-color, #3d7bff) 65%, transparent);
+  animation: floorDotPulse1 2.4s ease-out infinite 1.6s;
+}
+.psv-floor-sonar-center {
+  position: relative;
+  z-index: 2;
+  background: var(--hs-color, #3d7bff);
+  border-radius: 50%;
+}
+
+
+/* ── PSV : style floor-paisible ─────────────────────────────── */
+.psv-marker-floor-paisible {
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  cursor: pointer; opacity: var(--hs-opacity, 1);
+}
+.psv-floor-paisible-label {
+  background: rgba(0,0,0,.7); color: var(--hs-color, #fff);
+  padding: 3px 10px; border-radius: 99px;
+  font-size: calc(11px * var(--hs-size, 1)); font-weight: 600;
+  white-space: nowrap; opacity: 0; transform: translateY(4px);
+  transition: opacity .2s, transform .2s; pointer-events: none;
+}
+.psv-marker-floor-paisible:hover .psv-floor-paisible-label { opacity: 1; transform: translateY(0); }
+.psv-marker-floor-paisible.no-label .psv-floor-paisible-label { display: none; }
+.psv-floor-paisible-wrap {
+  position: relative; display: flex; align-items: center; justify-content: center;
+  perspective: 300px;
+}
+.psv-floor-paisible-ring {
+  position: absolute; border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--hs-color, #fff) 85%, transparent);
+  animation: paisiblePulse 2.5s ease-out infinite;
+  transform-origin: center;
+}
+.psv-floor-paisible-dot {
+  position: relative; z-index: 2; border-radius: 50%;
+  background: var(--hs-color, #fff);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--hs-color, #fff) 50%, transparent);
+}
+@keyframes paisiblePulse {
+  0%   { transform: rotateX(70deg) scale(1);   opacity: .8; }
+  100% { transform: rotateX(70deg) scale(2.8); opacity: 0;  }
+}
+
+
+.psv-marker-floor-ellipse {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  cursor: pointer; opacity: var(--hs-opacity, 1);
+}
+.psv-floor-ellipse-label {
+  background: rgba(0,0,0,.75); color: var(--hs-color, #fff);
+  padding: 2px 8px; border-radius: 99px;
+  font-size: calc(11px * var(--hs-size, 1)); font-weight: 600;
+  white-space: nowrap; opacity: 0; transform: translateY(4px);
+  transition: opacity .2s, transform .2s; pointer-events: none;
+}
+.psv-marker-floor-ellipse:hover .psv-floor-ellipse-label { opacity: 1; transform: translateY(0); }
+.psv-marker-floor-ellipse.no-label .psv-floor-ellipse-label { display: none; }
+.psv-floor-ellipse-ring {
+  border-radius: 50%; border: 2px solid var(--hs-color, #3d7bff);
+  background: transparent;
+  transition: transform .2s, background .2s, border-width .2s;
+}
+.psv-marker-floor-ellipse:hover .psv-floor-ellipse-ring {
+  transform: scaleX(1.12) scaleY(1.2);
+  background: color-mix(in srgb, var(--hs-color, #3d7bff) 20%, transparent);
+  border-width: 0;
+}
+
+/* ── PSV : style floor-static-ring ──────────────────────────── */
+.psv-marker-floor-ring-static {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  cursor: pointer; opacity: var(--hs-opacity, 1);
+}
+.psv-floor-ring-static-label {
+  background: rgba(0,0,0,.75); color: var(--hs-color, #fff);
+  padding: 2px 8px; border-radius: 99px;
+  font-size: calc(11px * var(--hs-size, 1)); font-weight: 600;
+  white-space: nowrap; opacity: 0; transform: translateY(4px);
+  transition: opacity .2s, transform .2s; pointer-events: none;
+}
+.psv-marker-floor-ring-static:hover .psv-floor-ring-static-label { opacity: 1; transform: translateY(0); }
+.psv-marker-floor-ring-static.no-label .psv-floor-ring-static-label { display: none; }
+.psv-floor-ring-static-dash {
+  border-radius: 50%; border: 2px dashed var(--hs-color, #3d7bff);
+  transform: scaleY(0.3); opacity: 0.7;
+  transition: transform .2s, border-style .2s, opacity .2s;
+}
+.psv-marker-floor-ring-static:hover .psv-floor-ring-static-dash {
+  transform: scaleY(0.38) scale(1.1); opacity: 1; border-style: solid;
+}
+
+/* ── PSV : classe utilitaire no-label ───────────────────────── */
+.psv-marker-floor.no-label .psv-floor-label,
+.psv-marker-floor-dot.no-label .psv-floor-dot-label,
+.psv-marker-floor-sonar.no-label .psv-floor-sonar-label,
+.psv-marker-nav.no-label .psv-marker-text,
+.psv-marker-pin.no-label .psv-marker-text,
+.psv-marker-bubble.no-label .psv-bubble-text { display: none; }
+
+
 .psv-marker-pin {
   display: flex;
   flex-direction: column;

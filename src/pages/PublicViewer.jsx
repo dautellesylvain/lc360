@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import { getProjectByToken, trackVisitStart, trackVisitEnd, trackHotspotClick, trackSceneVisit, checkVisitorMilestones } from '@services/firebase'
 import styles from './PublicViewer.module.css'
+import '@styles/psv-markers.css'
 
 let ViewerClass      = null
 let MarkersPlugin    = null
@@ -60,10 +61,100 @@ const ICONS = [
   { id: 'audio',       html: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>' },
 ]
 
+
+// Applique les filtres CSS d'une scène sur le container PSV
+function ensureSharpFilter(id, amount) {
+  let el = document.getElementById(id)
+  if (!el) {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+    svg.setAttribute('id', `svg-${id}`)
+    svg.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden'
+    svg.innerHTML = `<defs><filter id="${id}"><feConvolveMatrix order="3" kernelMatrix="0 0 0 0 0 0 0 0 0" bias="0" preserveAlpha="true"/></filter></defs>`
+    document.body.appendChild(svg)
+    el = document.getElementById(id)
+  }
+  if (!el) return
+  const a = Math.min(Math.max(amount, 0), 1)
+  const c = -a
+  const m = 1 + 4 * a
+  el.querySelector('feConvolveMatrix').setAttribute('kernelMatrix', `0 ${c} 0 ${c} ${m} ${c} 0 ${c} 0`)
+  return id
+}
+
+function ensureTonesFilter(id, highlights, shadows) {
+  const svgId = `svg-${id}`
+  let svgEl = document.getElementById(svgId)
+  if (!svgEl) {
+    svgEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+    svgEl.setAttribute('id', svgId)
+    svgEl.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden'
+    svgEl.innerHTML = `<defs><filter id="${id}" color-interpolation-filters="linearRGB">
+      <feComponentTransfer>
+        <feFuncR type="gamma" amplitude="1" exponent="1" offset="0"/>
+        <feFuncG type="gamma" amplitude="1" exponent="1" offset="0"/>
+        <feFuncB type="gamma" amplitude="1" exponent="1" offset="0"/>
+      </feComponentTransfer>
+    </filter></defs>`
+    document.body.appendChild(svgEl)
+  }
+  // highlights: -100 à 0 → amplitude 0.5 à 1, exponent 1.5 à 1
+  // shadows:     0 à 100 → offset 0 à 0.15
+  const hl = highlights / 100  // -1 à 0
+  const sh = shadows    / 100  //  0 à 1
+  const amplitude = 1 + hl * 0.5        // 0.5 à 1
+  const exponent  = 1 - hl * 0.6        // 1 à 1.6
+  const offset    = sh * 0.15           // 0 à 0.15
+  const filter = document.getElementById(id)
+  if (!filter) return
+  filter.querySelectorAll('feFuncR, feFuncG, feFuncB').forEach(f => {
+    f.setAttribute('amplitude', amplitude.toFixed(3))
+    f.setAttribute('exponent',  exponent.toFixed(3))
+    f.setAttribute('offset',    offset.toFixed(3))
+  })
+  return id
+}
+
+function applySceneFilters(container, filters) {
+  if (!container) return
+  if (!filters) { container.style.filter = ''; return }
+  const br = filters.brightness  ?? 100
+  const co = filters.contrast    ?? 100
+  const sa = filters.saturation  ?? 100
+  const sh = filters.sharpness   ?? 0
+  const wa = filters.warmth      ?? 0
+  const hl = filters.highlights  ?? 0
+  const sd = filters.shadows     ?? 0
+
+  let sharpPart = ''
+  if (sh > 0) {
+    const filterId = `izi360-sharp-${Math.round(sh * 10)}`
+    ensureSharpFilter(filterId, sh / 10)
+    sharpPart = `url(#${filterId})`
+  } else if (sh < 0) {
+    sharpPart = `blur(${Math.abs(sh) * 0.3}px)`
+  }
+
+  let tonesPart = ''
+  if (hl !== 0 || sd !== 0) {
+    const tonesId = `izi360-tones`
+    ensureTonesFilter(tonesId, hl, sd)
+    tonesPart = `url(#${tonesId})`
+  }
+
+  const warm = wa > 0
+    ? `sepia(${wa * 0.3}%) saturate(${100 + wa * 0.5}%)`
+    : wa < 0 ? `hue-rotate(${Math.abs(wa) * 0.8}deg) saturate(${100 - Math.abs(wa) * 0.3}%)` : ''
+
+  container.style.filter = `brightness(${br}%) contrast(${co}%) saturate(${sa}%) ${warm} ${sharpPart} ${tonesPart}`.trim()
+}
+
+
 function buildMarkers(scene, allScenes) {
   return (scene.hotspots || []).map(h => {
     const target  = allScenes?.find(s => s.id === h.targetSceneId)
     const isNav   = h.type === 'navigation' && target
+    // Label dynamique — suit le nom de la scène cible pour les hotspots navigation
+    const label   = isNav ? target.name : (h.label || '')
     const color   = h.color   || '#3d7bff'
     const opacity = h.opacity ?? 1
     const size    = h.size    ?? 1
@@ -76,14 +167,62 @@ function buildMarkers(scene, allScenes) {
     const vars       = `--hs-color:${color};--hs-opacity:${opacity};--hs-size:${size};--hs-ring-size:${h.ringSize ?? size}`
 
     let html
-    if (style === 'floor') {
-      html = `<div class="psv-marker-floor" style="${vars}"><div class="psv-floor-label">${h.label}</div><div class="psv-floor-icon">${iconScaled}</div><div class="psv-floor-ring"></div></div>`
+    const noLabel = h.showLabel === false ? 'no-label' : ''
+
+    if (style === 'floor-paisible') {
+      const ring = Math.round(36 * size)
+      const dot  = Math.round(14 * size)
+      const dotH = Math.round(dot * 0.45)
+      html = `<div class="psv-marker-floor-paisible ${noLabel}" style="${vars}">
+        <div class="psv-floor-paisible-wrap" style="width:${ring*3}px;height:${ring*3}px">
+          <div class="psv-floor-paisible-ring" style="width:${ring}px;height:${ring}px"></div>
+          <div class="psv-floor-paisible-dot" style="width:${dot}px;height:${dotH}px"></div>
+        </div>
+        <div class="psv-floor-paisible-label">${label}</div>
+      </div>`
+    } else if (style === 'floor-ellipse') {
+      const W = Math.round(54 * size), H = Math.round(W * 0.3)
+      html = `<div class="psv-marker-floor-ellipse ${noLabel}" style="${vars}">
+        <div class="psv-floor-ellipse-label">${label}</div>
+        <div class="psv-floor-ellipse-ring" style="width:${W}px;height:${H}px"></div>
+      </div>`
+    } else if (style === 'floor-ring-static') {
+      const W = Math.round(54 * size), H = Math.round(W * 0.3)
+      html = `<div class="psv-marker-floor-ring-static ${noLabel}" style="${vars}">
+        <div class="psv-floor-ring-static-label">${label}</div>
+        <div class="psv-floor-ring-static-dash" style="width:${W}px;height:${W}px"></div>
+      </div>`
+    } else if (style === 'floor-dot') {
+      const W = Math.round(64 * size), H = Math.round(W * 0.26)
+      const dW = Math.round(W * 0.42), dH = Math.round(dW * 0.32)
+      html = `<div class="psv-marker-floor-dot" style="${vars}">
+        <div class="psv-floor-dot-label">${label}</div>
+        <div class="psv-floor-dot-wrap" style="width:${W*3.2}px;height:${H*4.5}px">
+          <div class="psv-floor-dot-p2" style="width:${W}px;height:${H}px"></div>
+          <div class="psv-floor-dot-p1" style="width:${W}px;height:${H}px"></div>
+          <div class="psv-floor-dot-center" style="width:${dW}px;height:${dH}px"></div>
+        </div>
+      </div>`
+    } else if (style === 'floor-sonar') {
+      const W = Math.round(60 * size), H = Math.round(W * 0.28)
+      const dW = Math.round(W * 0.32), dH = Math.round(H * 0.55)
+      html = `<div class="psv-marker-floor-sonar" style="${vars}">
+        <div class="psv-floor-sonar-label">${label}</div>
+        <div class="psv-floor-sonar-wrap" style="width:${W*3.5}px;height:${H*4.5}px">
+          <div class="psv-floor-sonar-w1" style="width:${W}px;height:${H}px"></div>
+          <div class="psv-floor-sonar-w2" style="width:${W}px;height:${H}px"></div>
+          <div class="psv-floor-sonar-w3" style="width:${W}px;height:${H}px"></div>
+          <div class="psv-floor-sonar-center" style="width:${dW}px;height:${dH}px"></div>
+        </div>
+      </div>`
+    } else if (style === 'floor') {
+      html = `<div class="psv-marker-floor" style="${vars}"><div class="psv-floor-label">${label}</div><div class="psv-floor-icon">${iconScaled}</div><div class="psv-floor-ring"></div></div>`
     } else if (style === 'pin') {
-      html = `<div class="psv-marker-pin" style="${vars}"><div class="psv-pin-head">${iconScaled}</div><div class="psv-pin-stem"></div><div class="psv-pin-dot"></div><div class="psv-marker-text">${h.label}</div></div>`
+      html = `<div class="psv-marker-pin" style="${vars}"><div class="psv-pin-head">${iconScaled}</div><div class="psv-pin-stem"></div><div class="psv-pin-dot"></div><div class="psv-marker-text">${label}</div></div>`
     } else if (style === 'bubble') {
-      html = `<div class="psv-marker-bubble" style="${vars}"><span class="psv-bubble-icon">${iconScaled}</span><span class="psv-bubble-text">${h.label}</span></div>`
+      html = `<div class="psv-marker-bubble" style="${vars}"><span class="psv-bubble-icon">${iconScaled}</span><span class="psv-bubble-text">${label}</span></div>`
     } else {
-      html = `<div class="psv-marker-nav" style="${vars}"><div class="psv-marker-icon">${iconScaled}</div><div class="psv-marker-text">${h.label}</div></div>`
+      html = `<div class="psv-marker-nav" style="${vars}"><div class="psv-marker-icon">${iconScaled}</div><div class="psv-marker-text">${label}</div></div>`
     }
 
     return {
@@ -203,6 +342,7 @@ export default function PublicViewer() {
   const [error,       setError]       = useState(null)
   const [activeScene,   setActiveScene]   = useState(0)
   const [floorplanOpen, setFloorplanOpen] = useState(false)
+  const [currentYaw,    setCurrentYaw]    = useState(0)
   const currentSceneId  = project?.scenes?.[activeScene]?.id
   const floorplan       = project?.floorplan || null
   const [psvReady,    setPsvReady]    = useState(false)
@@ -319,6 +459,10 @@ export default function PublicViewer() {
         startAutorotRef.current?.()
       }, 3000)
     })
+    viewer.addEventListener('position-updated', (e) => {
+      setCurrentYaw(e.position?.yaw ?? 0)
+    })
+
     markers.addEventListener('select-marker', (e) => {
       const marker = e.marker
       const proj   = projectRef.current
@@ -548,6 +692,9 @@ export default function PublicViewer() {
         cB.style.zIndex = '2'
         cA.style.zIndex = '1'
 
+        // Appliquer les filtres de la nouvelle scène
+        applySceneFilters(cB, scene.filters)
+
         fadingRef.current = false
         setPsvReady(true)
 
@@ -610,6 +757,8 @@ export default function PublicViewer() {
         if (sc) buildMarkers(sc, projectRef.current.scenes).forEach(m => {
           try { markersRef.current?.addMarker(m) } catch(e) {}
         })
+        // Appliquer les filtres de la scène initiale
+        applySceneFilters(containerRef.current, sc?.filters)
         setPsvReady(true)
 
         const ua       = navigator.userAgent
@@ -1244,7 +1393,27 @@ export default function PublicViewer() {
                       cursor:'pointer', padding:0, transition:'all .2s',
                       boxShadow: currentSceneId === hp.scene_id ? '0 0 12px rgba(152,0,255,.8)' : '0 2px 6px rgba(0,0,0,.5)',
                     }}
-                  />
+                  >
+                    {currentSceneId === hp.scene_id && (
+                      <svg
+                        width="48" height="48"
+                        viewBox="-24 -24 48 48"
+                        style={{
+                          position: 'absolute',
+                          top: '50%', left: '50%',
+                          transform: `translate(-50%, -50%) rotate(${currentYaw}rad)`,
+                          pointerEvents: 'none',
+                          overflow: 'visible',
+                        }}
+                      >
+                        <path
+                          d={`M 0 0 L ${12 * Math.sin(-Math.PI/4)} ${-12 * Math.cos(-Math.PI/4)} A 12 12 0 0 1 ${12 * Math.sin(Math.PI/4)} ${-12 * Math.cos(Math.PI/4)} Z`}
+                          fill={floorplan?.dotColor || 'rgb(152,0,255)'}
+                          opacity="0.5"
+                        />
+                      </svg>
+                    )}
+                  </button>
                 ))}
               </div>
             </div>

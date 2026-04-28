@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { useViewerTour } from '@hooks/useOnboardingTour'
 import { useAtomValue } from 'jotai'
 import { authUserAtom, onboardingDoneAtom, userIsPROAtom } from '@store/auth'
@@ -9,6 +9,7 @@ import { doc, onSnapshot } from 'firebase/firestore'
 import styles from './ProjectViewer.module.css'
 import EditProjectModal from './EditProjectModal'
 import ElfsightChat from '@components/ElfsightChat'
+import NodeEditor   from '@components/NodeEditor'
 import '@styles/psv-markers.css'
 
 let ViewerClass   = null
@@ -47,11 +48,105 @@ export const HOTSPOT_ICONS = [
 ]
 
 // Styles de présentation du hotspot
+
+// Applique les filtres CSS d'une scène sur le container PSV
+// Injecte un filtre SVG de netteté dans le DOM si nécessaire
+function ensureSharpFilter(id, amount) {
+  let el = document.getElementById(id)
+  if (!el) {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+    svg.setAttribute('id', `svg-${id}`)
+    svg.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden'
+    svg.innerHTML = `<defs><filter id="${id}"><feConvolveMatrix order="3" kernelMatrix="0 0 0 0 0 0 0 0 0" bias="0" preserveAlpha="true"/></filter></defs>`
+    document.body.appendChild(svg)
+    el = document.getElementById(id)
+  }
+  if (!el) return
+  const a = Math.min(Math.max(amount, 0), 1)
+  const c = -a
+  const m = 1 + 4 * a
+  el.querySelector('feConvolveMatrix').setAttribute('kernelMatrix', `0 ${c} 0 ${c} ${m} ${c} 0 ${c} 0`)
+  return id
+}
+
+function ensureTonesFilter(id, highlights, shadows) {
+  const svgId = `svg-${id}`
+  let svgEl = document.getElementById(svgId)
+  if (!svgEl) {
+    svgEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+    svgEl.setAttribute('id', svgId)
+    svgEl.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden'
+    svgEl.innerHTML = `<defs><filter id="${id}" color-interpolation-filters="linearRGB">
+      <feComponentTransfer>
+        <feFuncR type="gamma" amplitude="1" exponent="1" offset="0"/>
+        <feFuncG type="gamma" amplitude="1" exponent="1" offset="0"/>
+        <feFuncB type="gamma" amplitude="1" exponent="1" offset="0"/>
+      </feComponentTransfer>
+    </filter></defs>`
+    document.body.appendChild(svgEl)
+  }
+  // highlights: -100 à 0 → amplitude 0.5 à 1, exponent 1.5 à 1
+  // shadows:     0 à 100 → offset 0 à 0.15
+  const hl = highlights / 100  // -1 à 0
+  const sh = shadows    / 100  //  0 à 1
+  const amplitude = 1 + hl * 0.5        // 0.5 à 1
+  const exponent  = 1 - hl * 0.6        // 1 à 1.6
+  const offset    = sh * 0.15           // 0 à 0.15
+  const filter = document.getElementById(id)
+  if (!filter) return
+  filter.querySelectorAll('feFuncR, feFuncG, feFuncB').forEach(f => {
+    f.setAttribute('amplitude', amplitude.toFixed(3))
+    f.setAttribute('exponent',  exponent.toFixed(3))
+    f.setAttribute('offset',    offset.toFixed(3))
+  })
+  return id
+}
+
+function applySceneFilters(container, filters) {
+  if (!container) return
+  if (!filters) { container.style.filter = ''; return }
+  const br = filters.brightness  ?? 100
+  const co = filters.contrast    ?? 100
+  const sa = filters.saturation  ?? 100
+  const sh = filters.sharpness   ?? 0
+  const wa = filters.warmth      ?? 0
+  const hl = filters.highlights  ?? 0
+  const sd = filters.shadows     ?? 0
+
+  let sharpPart = ''
+  if (sh > 0) {
+    const filterId = `izi360-sharp-${Math.round(sh * 10)}`
+    ensureSharpFilter(filterId, sh / 10)
+    sharpPart = `url(#${filterId})`
+  } else if (sh < 0) {
+    sharpPart = `blur(${Math.abs(sh) * 0.3}px)`
+  }
+
+  let tonesPart = ''
+  if (hl !== 0 || sd !== 0) {
+    const tonesId = `izi360-tones`
+    ensureTonesFilter(tonesId, hl, sd)
+    tonesPart = `url(#${tonesId})`
+  }
+
+  const warm = wa > 0
+    ? `sepia(${wa * 0.3}%) saturate(${100 + wa * 0.5}%)`
+    : wa < 0 ? `hue-rotate(${Math.abs(wa) * 0.8}deg) saturate(${100 - Math.abs(wa) * 0.3}%)` : ''
+
+  container.style.filter = `brightness(${br}%) contrast(${co}%) saturate(${sa}%) ${warm} ${sharpPart} ${tonesPart}`.trim()
+}
+
+
 export const HOTSPOT_STYLES = [
-  { id: 'floating',  label: 'Flottant',   desc: 'Icône + label flottant' },
-  { id: 'floor',     label: 'Au sol',     desc: 'Cercle aplati animé au sol' },
-  { id: 'pin',       label: 'Pin',        desc: 'Épingle avec tige' },
-  { id: 'bubble',    label: 'Bulle',      desc: 'Badge arrondi compact' },
+  { id: 'floating',         label: 'Flottant',      desc: 'Icône + label flottant' },
+  { id: 'floor',            label: 'Au sol',        desc: 'Cercle aplati animé au sol' },
+  { id: 'floor-dot',        label: 'Pulse ellipse', desc: 'Double ellipse pulsante au sol' },
+  { id: 'floor-sonar',      label: 'Sonar',         desc: 'Triple onde concentrique au sol' },
+  { id: 'floor-paisible',   label: 'Paisible',      desc: 'Anneau pulse en perspective 3D' },
+  { id: 'floor-ellipse',    label: 'Ellipse',       desc: 'Contour elliptique statique' },
+  { id: 'floor-ring-static',label: 'Anneau',        desc: 'Anneau pointillé statique' },
+  { id: 'pin',              label: 'Pin',           desc: 'Épingle avec tige' },
+  { id: 'bubble',           label: 'Bulle',         desc: 'Badge arrondi compact' },
 ]
 
 const toRad = (d) => d * Math.PI / 180
@@ -100,6 +195,7 @@ export default function ProjectViewer() {
   const [floorplanOpen,  setFloorplanOpen]  = useState(false)
   const currentSceneId   = project?.scenes?.[activeScene]?.id
   const [floorplanEditor, setFloorplanEditor] = useState(false)
+  const [nodalView,      setNodalView]      = useState(false)
   const [draggingHp,      setDraggingHp]      = useState(null)
   const [dragSceneIdx,    setDragSceneIdx]    = useState(null)
   const [dragOverIdx,     setDragOverIdx]     = useState(null)
@@ -583,6 +679,54 @@ export default function ProjectViewer() {
     })
   }, [project, editMode, psvReady])
 
+  // Médiathèque pour la vue nodale — images de tous les projets + Cloudinary
+  const [nodeSketchupImgs, setNodeSketchupImgs] = useState([])
+
+  useEffect(() => {
+    if (!authUser?.uid) return
+    import('firebase/firestore').then(({ doc: fsDoc, getDoc }) => {
+      getDoc(fsDoc(db, 'users', authUser.uid)).then(snap => {
+        const key = snap.data()?.sketchupKey
+        if (!key) return
+        fetch('https://izi360-backend-694882487700.europe-west1.run.app/api/media-library', {
+          headers: { 'Authorization': `Bearer ${key}` }
+        })
+        .then(r => r.json())
+        .then(data => {
+          if (data.status === 'success') {
+            setNodeSketchupImgs(data.images.map(img => ({
+              url:         img.url,
+              sceneName:   img.public_id.split('/').pop() || 'Image',
+              projectName: img.folder || 'Cloudinary',
+            })))
+          }
+        })
+        .catch(() => {})
+      })
+    })
+  }, [authUser?.uid])
+
+  const nodeGallery = useMemo(() => {
+    const seen = new Set()
+    const imgs = []
+    const sorted = [...(allProjects || [])].sort((a, b) =>
+      (b.updatedAt?.toMillis?.() ?? 0) - (a.updatedAt?.toMillis?.() ?? 0)
+    )
+    for (const proj of sorted) {
+      for (const s of (proj.scenes || [])) {
+        if (!s.imageUrl || seen.has(s.imageUrl)) continue
+        seen.add(s.imageUrl)
+        imgs.push({ url: s.imageUrl, sceneName: s.name || 'Sans nom', projectName: proj.name || 'Projet' })
+      }
+    }
+    for (const img of nodeSketchupImgs) {
+      if (!img.url || seen.has(img.url)) continue
+      seen.add(img.url)
+      imgs.push(img)
+    }
+    return imgs
+  }, [allProjects, nodeSketchupImgs])
+
   const reorderScenes = async (fromIdx, toIdx) => {
     if (fromIdx === null || fromIdx === undefined || fromIdx === toIdx) return
     const newScenes = [...scenes]
@@ -633,6 +777,87 @@ export default function ProjectViewer() {
     })
     await updateProject(project.id, { scenes: updatedScenes })
     setHotspotModal(null)
+  }
+
+  // Drag & drop d'une scène depuis la sidebar vers le panorama pour créer un hotspot
+  const handleDropOnViewer = async (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    
+    console.log('[DROP] Event triggered', e)
+    
+    const sceneId = e.dataTransfer.getData('sceneId')
+    const sceneIndex = parseInt(e.dataTransfer.getData('sceneIndex'))
+    
+    console.log('[DROP] SceneId:', sceneId, 'SceneIndex:', sceneIndex)
+    
+    if (!sceneId || isNaN(sceneIndex)) {
+      console.log('[DROP] Invalid data, aborting')
+      return
+    }
+    if (sceneIndex === activeScene) {
+      console.log('[DROP] Cannot create hotspot to self')
+      return
+    }
+    
+    const viewer = viewerRef.current
+    if (!viewer) {
+      console.log('[DROP] No viewer instance')
+      return
+    }
+    
+    console.log('[DROP] Creating hotspot...')
+    
+    // Récupérer les coordonnées du drop dans le panorama
+    const rect = containerRef.current.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
+    
+    console.log('[DROP] Screen coords:', x, y)
+    
+    // Convertir position écran -> coordonnées sphériques
+    const coords = viewer.dataHelper?.viewerCoordsToSphericalCoords({ x, y })
+    
+    if (!coords) {
+      console.log('[DROP] Failed to convert coords')
+      return
+    }
+    
+    console.log('[DROP] Spherical coords:', coords)
+    
+    const targetScene = project.scenes[sceneIndex]
+    
+    // Créer le hotspot automatiquement
+    const hotspot = {
+      id:            `hs_${Date.now()}`,
+      yaw:           coords.yaw,
+      pitch:         coords.pitch,
+      label:         targetScene.name || `Scène ${sceneIndex + 1}`,
+      type:          'navigation',
+      icon:          'arrow-down',
+      style:         'floating',
+      size:          1,
+      targetSceneId: sceneId,
+      arrivalYaw:    0,
+      arrivalPitch:  0,
+      color:         '#3d7bff',
+      opacity:       1,
+    }
+    
+    console.log('[DROP] Hotspot created:', hotspot)
+    
+    const updatedScenes = project.scenes.map((s, i) => {
+      if (i !== activeScene) return s
+      return { ...s, hotspots: [...(s.hotspots || []), hotspot] }
+    })
+    
+    console.log('[DROP] Updating project...')
+    await updateProject(project.id, { scenes: updatedScenes })
+    console.log('[DROP] Done!')
+    
+    // Feedback visuel
+    setDragSceneIdx(null)
+    setDragOverIdx(null)
   }
 
   const deleteScene = async (idx) => {
@@ -697,10 +922,16 @@ export default function ProjectViewer() {
             >
               <div
                 draggable
-                onDragStart={e => { e.stopPropagation(); setDragSceneIdx(i) }}
+                onDragStart={e => { 
+                  e.stopPropagation()
+                  setDragSceneIdx(i)
+                  // Stocker l'ID de la scène pour le drop vers panorama
+                  e.dataTransfer.setData('sceneId', scene.id)
+                  e.dataTransfer.setData('sceneIndex', i.toString())
+                }}
                 onDragEnd={() => { setDragSceneIdx(null); setDragOverIdx(null) }}
                 style={{ cursor:'grab', padding:'0 6px', color:'var(--text-2)', fontSize:16, display:'flex', alignItems:'center', flexShrink:0 }}
-                title="Glisser pour réordonner"
+                title="Glisser pour réordonner ou vers le panorama pour créer un hotspot"
               >⠿</div>
               <button className={styles.sceneItemBtn} onClick={() => { if (editingSceneIdx !== i) switchScene(i) }}>
                 <div className={styles.sceneThumb}>
@@ -806,6 +1037,19 @@ export default function ProjectViewer() {
         {hasScenes && current && (
           <div className={styles.viewerBar}>
             <span className={styles.viewerSceneName}>{current.name || `Scène ${activeScene + 1}`}</span>
+            <button
+              onClick={() => setNodalView(v => !v)}
+              style={{
+                background: nodalView ? '#1d4ed8' : 'rgba(255,255,255,.08)',
+                color: '#fff', border: '1px solid rgba(255,255,255,.15)',
+                borderRadius: 8, padding: '5px 12px', fontSize: 12,
+                fontWeight: 700, cursor: 'pointer', display: 'flex',
+                alignItems: 'center', gap: 6,
+              }}
+              title="Vue nodale"
+            >
+              {nodalView ? '🔲 Vue 360°' : '⬡ Vue Nodale'}
+            </button>
             <div className={styles.viewerNav}>
               <button className={styles.navBtn} onClick={() => switchScene(Math.max(0, activeScene - 1))} disabled={activeScene === 0}>‹</button>
               <span className={styles.navCount}>{activeScene + 1} / {scenes.length}</span>
@@ -826,7 +1070,12 @@ export default function ProjectViewer() {
           {/* Container B — scène entrante, en dessous */}
           <div ref={containerBRef} className={styles.psvContainerB} />
           {/* Container A — scène actuelle, au dessus */}
-          <div ref={containerRef} className={styles.psvContainerA}>
+          <div 
+            ref={containerRef} 
+            className={styles.psvContainerA}
+            onDragOver={e => { e.preventDefault(); e.stopPropagation() }}
+            onDrop={handleDropOnViewer}
+          >
             {!psvReady && hasScenes && (
               <div className={styles.psvLoader}><span className={styles.psvSpinner} /><span>Chargement…</span></div>
             )}
@@ -848,19 +1097,122 @@ export default function ProjectViewer() {
           scene={current}
           viewer={viewerRef.current}
           onSave={async (settings) => {
-            const updatedScenes = project.scenes.map((s, i) =>
+            const proj = projectRef.current
+            const updatedScenes = proj.scenes.map((s, i) =>
               i === activeScene ? { ...s, ...settings } : s
             )
-            await updateProject(project.id, { scenes: updatedScenes })
+            await updateProject(proj.id, { scenes: updatedScenes })
             setSceneSettingsOpen(false)
           }}
           onSaveAll={async (settings) => {
-            const updatedScenes = project.scenes.map(s => ({ ...s, ...settings }))
-            await updateProject(project.id, { scenes: updatedScenes })
+            const proj = projectRef.current
+            const updatedScenes = proj.scenes.map(s => ({ ...s, ...settings }))
+            await updateProject(proj.id, { scenes: updatedScenes })
             setSceneSettingsOpen(false)
           }}
           onClose={() => setSceneSettingsOpen(false)}
         />
+      )}
+
+      {/* Vue nodale — panneau latéral droit */}
+      {nodalView && (
+        <div style={{
+          position: 'fixed',
+          top: 48, right: 0,
+          width: '42%', height: 'calc(100vh - 48px)',
+          zIndex: 50,
+          borderLeft: '2px solid rgba(29,78,216,.4)',
+          display: 'flex', flexDirection: 'column',
+        }}>
+          {/* Header du panneau */}
+          <div style={{
+            background: '#0f1117', borderBottom: '1px solid rgba(255,255,255,.08)',
+            padding: '8px 14px', display: 'flex', alignItems: 'center',
+            justifyContent: 'space-between', flexShrink: 0,
+          }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#aec6ff' }}>⬡ Vue Nodale</span>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <span style={{ fontSize: 11, color: '#6b7280' }}>Glissez les nœuds • Cliquez pour naviguer • Clic arête pour supprimer</span>
+              <button
+                onClick={() => setNodalView(false)}
+                style={{
+                  background: 'rgba(239,68,68,.15)', color: '#ef4444',
+                  border: '1px solid rgba(239,68,68,.3)',
+                  borderRadius: 6, padding: '4px 10px',
+                  fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                }}
+              >✕ Fermer</button>
+            </div>
+          </div>
+          {/* Canvas nodal */}
+          <div style={{ flex: 1 }}>
+            <NodeEditor
+              project={project}
+              activeSceneIdx={activeScene}
+              onSelectScene={idx => { switchScene(idx) }}
+              onConnect={async (params) => {
+                const fromId = params.source
+                const toId   = params.target
+                if (!fromId || !toId || fromId === toId) return
+                // Utiliser projectRef pour avoir l'état le plus récent
+                const proj = projectRef.current
+                if (!proj) return
+                const fromScene = proj.scenes.find(s => s.id === fromId)
+                const toScene   = proj.scenes.find(s => s.id === toId)
+                if (!fromScene || !toScene) return
+                const alreadyExists = (fromScene.hotspots||[]).some(h => h.targetSceneId === toId)
+                if (alreadyExists) return
+                const t = Date.now()
+                const hsAB = {
+                  id: `hs_nodal_${fromId}_${toId}_${t}`,
+                  type: 'navigation', targetSceneId: toId,
+                  yaw: 0, pitch: -0.096,
+                  arrivalYaw: Math.PI, arrivalPitch: 0,
+                  label: toScene.name || 'Aller',
+                  icon: 'arrow', style: 'floor', size: 2, color: '#ffffff',
+                }
+                const hsBA = {
+                  id: `hs_nodal_${toId}_${fromId}_${t + 1}`,
+                  type: 'navigation', targetSceneId: fromId,
+                  yaw: Math.PI, pitch: -0.096,
+                  arrivalYaw: 0, arrivalPitch: 0,
+                  label: fromScene.name || 'Retour',
+                  icon: 'arrow', style: 'floor', size: 2, color: '#ffffff',
+                }
+                const newScenes = proj.scenes.map(s => {
+                  if (s.id === fromId) return { ...s, hotspots: [...(s.hotspots||[]), hsAB] }
+                  if (s.id === toId)   return { ...s, hotspots: [...(s.hotspots||[]), hsBA] }
+                  return s
+                })
+                await updateProject(proj.id, { scenes: newScenes })
+              }}
+              gallery={nodeGallery}
+              onSaveFloorplan={async (floorplanData) => {
+                await updateProject(projectRef.current.id, {
+                  floorplan: {
+                    ...floorplanData,
+                    showOnStart: projectRef.current?.floorplan?.showOnStart || false,
+                    dotColor:    projectRef.current?.floorplan?.dotColor    || '#9800ff',
+                  }
+                })
+              }}
+              onSavePosition={async (sceneId, position) => {
+                const newScenes = projectRef.current.scenes.map(s =>
+                  s.id === sceneId ? { ...s, nodePosition: position } : s
+                )
+                await updateProject(projectRef.current.id, { scenes: newScenes })
+              }}
+              onDeleteEdge={async (edge) => {
+                const newScenes = projectRef.current.scenes.map(s => {
+                  if (s.id === edge.source) return { ...s, hotspots: (s.hotspots||[]).filter(h => h.targetSceneId !== edge.target) }
+                  if (s.id === edge.target) return { ...s, hotspots: (s.hotspots||[]).filter(h => h.targetSceneId !== edge.source) }
+                  return s
+                })
+                await updateProject(projectRef.current.id, { scenes: newScenes })
+              }}
+            />
+          </div>
+        </div>
       )}
 
       <ElfsightChat />
@@ -1130,6 +1482,20 @@ export default function ProjectViewer() {
             await updateProject(proj.id, { scenes: updatedScenes })
             setHotspotModal(null)
           }}
+          onApplyStyleAll={async (settings) => {
+            const proj = projectRef.current
+            if (!proj) return
+            const updatedScenes = proj.scenes.map(s => ({
+              ...s,
+              hotspots: (s.hotspots || []).map(h =>
+                h.type === 'navigation'
+                  ? { ...h, ...settings }
+                  : h
+              )
+            }))
+            await updateProject(proj.id, { scenes: updatedScenes })
+            setHotspotModal(null)
+          }}
         />
       )}
     </div>
@@ -1140,6 +1506,8 @@ export default function ProjectViewer() {
 function buildMarkers(scene, allScenes) {
   return (scene.hotspots || []).map(h => {
     const target   = allScenes?.find(s => s.id === h.targetSceneId)
+    // Pour les hotspots navigation, le label suit le nom de la scène cible en temps réel
+    const label    = h.type === 'navigation' && target ? target.name : (h.label || '')
     const color    = h.color    || '#3d7bff'
     const opacity  = h.opacity  ?? 1
     const size     = h.size     ?? 1
@@ -1166,13 +1534,71 @@ function buildMarkers(scene, allScenes) {
       if (h.type && h.type !== 'navigation') {
         return `<div class="psv-marker-bubble" style="${vars}">
           <span class="psv-bubble-icon" style="font-size:${px}px">${typeIcon}</span>
-          <span class="psv-bubble-text">${h.label || ''}</span>
+          <span class="psv-bubble-text">${label}</span>
+        </div>`
+      }
+
+      const noLabel = h.showLabel === false ? 'no-label' : ''
+
+      if (style === 'floor-paisible') {
+        const ring = Math.round(36 * size)
+        const dot  = Math.round(14 * size)
+        const dotH = Math.round(dot * 0.45)
+        return `<div class="psv-marker-floor-paisible ${noLabel}" style="${vars}">
+          <div class="psv-floor-paisible-wrap" style="width:${ring*3}px;height:${ring*3}px">
+            <div class="psv-floor-paisible-ring" style="width:${ring}px;height:${ring}px"></div>
+            <div class="psv-floor-paisible-dot" style="width:${dot}px;height:${dotH}px"></div>
+          </div>
+          <div class="psv-floor-paisible-label">${label}</div>
+        </div>`
+      }
+
+      if (style === 'floor-ellipse') {
+        const W = Math.round(54 * size), H = Math.round(W * 0.3)
+        return `<div class="psv-marker-floor-ellipse ${noLabel}" style="${vars}">
+          <div class="psv-floor-ellipse-label">${label}</div>
+          <div class="psv-floor-ellipse-ring" style="width:${W}px;height:${H}px"></div>
+        </div>`
+      }
+
+      if (style === 'floor-ring-static') {
+        const W = Math.round(54 * size), H = Math.round(W * 0.3)
+        return `<div class="psv-marker-floor-ring-static ${noLabel}" style="${vars}">
+          <div class="psv-floor-ring-static-label">${label}</div>
+          <div class="psv-floor-ring-static-dash" style="width:${W}px;height:${W}px"></div>
+        </div>`
+      }
+
+      if (style === 'floor-dot') {
+        const W = Math.round(64 * size), H = Math.round(W * 0.26)
+        const dW = Math.round(W * 0.42), dH = Math.round(dW * 0.32)
+        return `<div class="psv-marker-floor-dot ${noLabel}" style="${vars}">
+          <div class="psv-floor-dot-label">${label}</div>
+          <div class="psv-floor-dot-wrap" style="width:${W*3.2}px;height:${H*4.5}px">
+            <div class="psv-floor-dot-p2" style="width:${W}px;height:${H}px"></div>
+            <div class="psv-floor-dot-p1" style="width:${W}px;height:${H}px"></div>
+            <div class="psv-floor-dot-center" style="width:${dW}px;height:${dH}px"></div>
+          </div>
+        </div>`
+      }
+
+      if (style === 'floor-sonar') {
+        const W = Math.round(60 * size), H = Math.round(W * 0.28)
+        const dW = Math.round(W * 0.32), dH = Math.round(H * 0.55)
+        return `<div class="psv-marker-floor-sonar ${noLabel}" style="${vars}">
+          <div class="psv-floor-sonar-label">${label}</div>
+          <div class="psv-floor-sonar-wrap" style="width:${W*3.5}px;height:${H*4.5}px">
+            <div class="psv-floor-sonar-w1" style="width:${W}px;height:${H}px"></div>
+            <div class="psv-floor-sonar-w2" style="width:${W}px;height:${H}px"></div>
+            <div class="psv-floor-sonar-w3" style="width:${W}px;height:${H}px"></div>
+            <div class="psv-floor-sonar-center" style="width:${dW}px;height:${dH}px"></div>
+          </div>
         </div>`
       }
 
       if (style === 'floor') {
         return `<div class="psv-marker-floor" style="${vars}">
-          <div class="psv-floor-label">${h.label}</div>
+          <div class="psv-floor-label">${label}</div>
           <div class="psv-floor-icon">${iconScaled}</div>
           <div class="psv-floor-ring"></div>
         </div>`
@@ -1183,21 +1609,21 @@ function buildMarkers(scene, allScenes) {
           <div class="psv-pin-head">${iconScaled}</div>
           <div class="psv-pin-stem"></div>
           <div class="psv-pin-dot"></div>
-          <div class="psv-marker-text">${h.label}</div>
+          <div class="psv-marker-text">${label}</div>
         </div>`
       }
 
       if (style === 'bubble') {
         return `<div class="psv-marker-bubble" style="${vars}">
           <span class="psv-bubble-icon">${iconScaled}</span>
-          <span class="psv-bubble-text">${h.label}</span>
+          <span class="psv-bubble-text">${label}</span>
         </div>`
       }
 
       // default: floating
       return `<div class="psv-marker-nav" style="${vars}">
         <div class="psv-marker-icon">${iconScaled}</div>
-        <div class="psv-marker-text">${h.label}</div>
+        <div class="psv-marker-text">${label}</div>
       </div>`
     }
 
@@ -1265,7 +1691,7 @@ function ArrivalPreview({ imageUrl, onAngleChange }) {
 }
 
 // ── Modal Hotspot ──────────────────────────────────────────────
-function HotspotModal({ hotspot, scenes, activeSceneIdx, onSave, onDelete, onClose, onApplyColorAll }) {
+function HotspotModal({ hotspot, scenes, activeSceneIdx, onSave, onDelete, onClose, onApplyColorAll, onApplyStyleAll }) {
   const isEditing = !!hotspot.editing
 
   const [label,         setLabel]         = useState(hotspot.label         || '')
@@ -1275,6 +1701,7 @@ function HotspotModal({ hotspot, scenes, activeSceneIdx, onSave, onDelete, onClo
   const [arrivalPitch,  setArrivalPitch]  = useState(hotspot.arrivalPitch  ?? 0)
   const [icon,          setIcon]          = useState(hotspot.icon          || (hotspot.type === 'video' ? 'video' : hotspot.type === 'gallery' ? 'gallery' : hotspot.type === 'audio' ? 'audio' : hotspot.type === 'info' ? 'info' : 'arrow-down'))
   const [hsStyle,       setHsStyle]       = useState(hotspot.style         || 'floating')
+  const [showLabel,     setShowLabel]     = useState(hotspot.showLabel     !== false)
   const [size,          setSize]          = useState(hotspot.size          ?? 1)
   const [color,         setColor]         = useState(hotspot.color         || '#3d7bff')
   const [opacity,       setOpacity]       = useState(hotspot.opacity       ?? 1)
@@ -1316,6 +1743,7 @@ function HotspotModal({ hotspot, scenes, activeSceneIdx, onSave, onDelete, onClo
       arrivalYaw, arrivalPitch, color, opacity,
       infoContent, infoImageUrl, infoLink,
       urlHref, urlLabel,
+      showLabel,
       id: hotspot.id,
     })
     setSaving(false)
@@ -1475,10 +1903,89 @@ function HotspotModal({ hotspot, scenes, activeSceneIdx, onSave, onDelete, onClo
                   <span className={styles.styleCardLabel}>Bulle</span>
                 </button>
 
+                {/* Pulse ellipse */}
+                <button className={`${styles.styleCard} ${hsStyle === 'floor-dot' ? styles.styleCardActive : ''}`}
+                  onClick={() => setHsStyle('floor-dot')}>
+                  <div className={styles.styleCardPreview}>
+                    <div className="psv-marker-floor-dot" style={{'--hs-color': color, '--hs-size': 0.7, '--hs-opacity': 1}}>
+                      <div className="psv-floor-dot-wrap" style={{width:48,height:14}}>
+                        <div className="psv-floor-dot-p2" style={{width:38,height:11}}></div>
+                        <div className="psv-floor-dot-p1" style={{width:38,height:11}}></div>
+                        <div className="psv-floor-dot-center" style={{width:16,height:5}}></div>
+                      </div>
+                    </div>
+                  </div>
+                  <span className={styles.styleCardLabel}>Pulse ellipse</span>
+                </button>
+
+                {/* Sonar */}
+                <button className={`${styles.styleCard} ${hsStyle === 'floor-sonar' ? styles.styleCardActive : ''}`}
+                  onClick={() => setHsStyle('floor-sonar')}>
+                  <div className={styles.styleCardPreview}>
+                    <div className="psv-marker-floor-sonar" style={{'--hs-color': color, '--hs-size': 0.7, '--hs-opacity': 1}}>
+                      <div className="psv-floor-sonar-wrap" style={{width:52,height:14}}>
+                        <div className="psv-floor-sonar-w1" style={{width:38,height:11}}></div>
+                        <div className="psv-floor-sonar-w2" style={{width:38,height:11}}></div>
+                        <div className="psv-floor-sonar-w3" style={{width:38,height:11}}></div>
+                        <div className="psv-floor-sonar-center" style={{width:12,height:6}}></div>
+                      </div>
+                    </div>
+                  </div>
+                  <span className={styles.styleCardLabel}>Sonar</span>
+                </button>
+
+                {/* Paisible */}
+                <button className={`${styles.styleCard} ${hsStyle === 'floor-paisible' ? styles.styleCardActive : ''}`}
+                  onClick={() => setHsStyle('floor-paisible')}>
+                  <div className={styles.styleCardPreview}>
+                    <div className="psv-marker-floor-paisible" style={{'--hs-color': color, '--hs-size': 0.7, '--hs-opacity': 1}}>
+                      <div className="psv-floor-paisible-wrap" style={{width:48,height:48}}>
+                        <div className="psv-floor-paisible-ring" style={{width:20,height:20}}></div>
+                        <div className="psv-floor-paisible-dot" style={{width:8,height:4}}></div>
+                      </div>
+                    </div>
+                  </div>
+                  <span className={styles.styleCardLabel}>Paisible</span>
+                </button>
+
+                {/* Ellipse outline */}
+                <button className={`${styles.styleCard} ${hsStyle === 'floor-ellipse' ? styles.styleCardActive : ''}`}
+                  onClick={() => setHsStyle('floor-ellipse')}>
+                  <div className={styles.styleCardPreview}>
+                    <div className="psv-marker-floor-ellipse" style={{'--hs-color': color, '--hs-size': 0.7, '--hs-opacity': 1}}>
+                      <div className="psv-floor-ellipse-ring" style={{width:40,height:12}}></div>
+                    </div>
+                  </div>
+                  <span className={styles.styleCardLabel}>Ellipse</span>
+                </button>
+
+                {/* Anneau pointillé */}
+                <button className={`${styles.styleCard} ${hsStyle === 'floor-ring-static' ? styles.styleCardActive : ''}`}
+                  onClick={() => setHsStyle('floor-ring-static')}>
+                  <div className={styles.styleCardPreview}>
+                    <div className="psv-marker-floor-ring-static" style={{'--hs-color': color, '--hs-size': 0.7, '--hs-opacity': 1}}>
+                      <div className="psv-floor-ring-static-dash" style={{width:44,height:44}}></div>
+                    </div>
+                  </div>
+                  <span className={styles.styleCardLabel}>Anneau</span>
+                </button>
+
               </div>
             </div>
 
-            {/* Taille */}
+            {/* Masquer le label */}
+            <div className={styles.modalField} style={{display:'flex',alignItems:'center',gap:10}}>
+              <input
+                type="checkbox"
+                id="showLabel"
+                checked={showLabel !== false}
+                onChange={e => setShowLabel(e.target.checked)}
+                style={{width:16,height:16,cursor:'pointer'}}
+              />
+              <label htmlFor="showLabel" className={styles.modalLabel} style={{cursor:'pointer',margin:0}}>
+                Afficher le label au survol
+              </label>
+            </div>
             <div className={styles.sliderGroup}>
 
               {/* Taille icône — toujours visible */}
@@ -1553,6 +2060,26 @@ function HotspotModal({ hotspot, scenes, activeSceneIdx, onSave, onDelete, onClo
                 🎨 Appliquer cette couleur à tous les hotspots
               </button>
             </div>
+
+            {/* Appliquer tous les réglages navigation */}
+            {type === 'navigation' && (
+              <div className={styles.modalField}>
+                <button
+                  className={styles.modalCancel}
+                  style={{ width: '100%', marginTop: 2, borderColor: 'rgba(152,0,255,.4)', color: '#c084fc' }}
+                  onClick={() => onApplyStyleAll && onApplyStyleAll({
+                    style:   hsStyle,
+                    icon,
+                    size,
+                    color,
+                    opacity,
+                  })}
+                  title="Applique style, icône, taille, couleur et opacité à tous les hotspots de navigation"
+                >
+                  ✦ Appliquer ces réglages à tous les hotspots de navigation
+                </button>
+              </div>
+            )}
 
             {/* Scène cible */}
             {type === 'navigation' && otherScenes.length > 0 && (
@@ -1955,7 +2482,25 @@ function SceneSettingsModal({ scene, viewer, onSave, onSaveAll, onClose }) {
   const [autorotate,     setAutorotate]     = useState(scene.autorotate     ?? false)
   const [autorotSpeed,   setAutorotSpeed]   = useState(scene.autorotSpeed   ?? 1)
   const [autorotDir,     setAutorotDir]     = useState(scene.autorotDir     ?? 1)
-  const [saving, setSaving] = useState(false)
+
+  // Réglages image
+  const [brightness,  setBrightness]  = useState(scene.filters?.brightness  ?? 100)
+  const [contrast,    setContrast]    = useState(scene.filters?.contrast    ?? 100)
+  const [saturation,  setSaturation]  = useState(scene.filters?.saturation  ?? 100)
+  const [sharpness,   setSharpness]   = useState(scene.filters?.sharpness   ?? 0)
+  const [warmth,      setWarmth]      = useState(scene.filters?.warmth      ?? 0)
+  const [highlights,  setHighlights]  = useState(scene.filters?.highlights  ?? 0)
+  const [shadows,     setShadows]     = useState(scene.filters?.shadows     ?? 0)
+
+  const [activeSection, setActiveSection] = useState('zoom')
+  const [saving,        setSaving]        = useState(false)
+  const isImageMode = activeSection === 'image'
+
+  const applyFilters = useCallback((br, co, sa, sh, wa, hl = highlights, sd = shadows) => {
+    const canvas = viewer?.renderer?.container || viewer?.container
+    if (!canvas) return
+    applySceneFilters(canvas, { brightness: br, contrast: co, saturation: sa, sharpness: sh, warmth: wa, highlights: hl, shadows: sd })
+  }, [viewer, highlights, shadows])
 
   const applyToViewer = useCallback((vals) => {
     if (!viewer) return
@@ -1973,6 +2518,7 @@ function SceneSettingsModal({ scene, viewer, onSave, onSaveAll, onClose }) {
 
   useEffect(() => {
     applyToViewer({ zd: zoomDefault, zn: zoomMin, zx: zoomMax, pt: correctionTilt, pp: correctionPan, pr: correctionRoll })
+    applyFilters(brightness, contrast, saturation, sharpness, warmth)
     return () => { try { viewer?.stopAutorotate?.() } catch(e) {} }
   }, [])
 
@@ -1980,12 +2526,22 @@ function SceneSettingsModal({ scene, viewer, onSave, onSaveAll, onClose }) {
 
   const handleSave = async () => {
     setSaving(true)
-    await onSave({ zoomDefault, zoomMin, zoomMax, correctionTilt, correctionPan, correctionRoll, autorotate, autorotSpeed, autorotDir })
+    await onSave({
+      zoomDefault, zoomMin, zoomMax,
+      correctionTilt, correctionPan, correctionRoll,
+      autorotate, autorotSpeed, autorotDir,
+      filters: { brightness, contrast, saturation, sharpness, warmth, highlights, shadows },
+    })
   }
 
   const handleSaveAll = async () => {
     setSaving(true)
-    await onSaveAll({ zoomDefault, zoomMin, zoomMax, correctionTilt, correctionPan, correctionRoll, autorotate, autorotSpeed, autorotDir })
+    await onSaveAll({
+      zoomDefault, zoomMin, zoomMax,
+      correctionTilt, correctionPan, correctionRoll,
+      autorotate, autorotSpeed, autorotDir,
+      filters: { brightness, contrast, saturation, sharpness, warmth, highlights, shadows },
+    })
     setSaving(false)
   }
 
@@ -1995,15 +2551,42 @@ function SceneSettingsModal({ scene, viewer, onSave, onSaveAll, onClose }) {
   }
 
   return (
-    <div className={styles.modalOverlay} onClick={e => e.target === e.currentTarget && handleCancel()}>
-      <div className={styles.modal}>
+    <div
+      className={styles.modalOverlay}
+      onClick={e => e.target === e.currentTarget && handleCancel()}
+      style={isImageMode ? { background: 'transparent', backdropFilter: 'none', alignItems: 'flex-end', justifyContent: 'flex-start', padding: 16 } : {}}
+    >
+      <div className={styles.modal} style={isImageMode ? { maxHeight: '80dvh', width: 320 } : {}}>
         <div className={styles.modalHeader}>
           <h3 className={styles.modalTitle}>⚙ Réglages — {scene.name}</h3>
           <button className={styles.modalClose} onClick={handleCancel}>✕</button>
         </div>
+
+        {/* Onglets de navigation */}
+        <div style={{display:'flex', gap:6, flexShrink:0}}>
+          {[
+            { id:'zoom',      label:'🔍 Zoom' },
+            { id:'correction',label:'📐 Correction' },
+            { id:'image',     label:'🎨 Image' },
+            { id:'autorot',   label:'🔄 Auto' },
+          ].map(tab => (
+            <button key={tab.id}
+              onClick={() => setActiveSection(tab.id)}
+              style={{
+                flex:1, padding:'5px 4px', fontSize:11, fontWeight:600,
+                borderRadius:6, border:'1px solid',
+                borderColor: activeSection === tab.id ? 'var(--accent)' : 'var(--border)',
+                background: activeSection === tab.id ? 'rgba(29,78,216,.15)' : 'transparent',
+                color: activeSection === tab.id ? 'var(--accent)' : 'var(--text-2)',
+                cursor:'pointer',
+              }}
+            >{tab.label}</button>
+          ))}
+        </div>
+
         <div className={styles.sceneSettingsBody}>
 
-          <div className={styles.settingsSection}>
+          {activeSection === 'zoom' && <div className={styles.settingsSection}>
             <p className={styles.settingsSectionTitle}>Zoom</p>
             <div className={styles.modalField}>
               <label className={styles.modalLabel}>Zoom par défaut — <strong>{zoomDefault}%</strong></label>
@@ -2029,9 +2612,9 @@ function SceneSettingsModal({ scene, viewer, onSave, onSaveAll, onClose }) {
               </div>
               <div className={styles.zoomBarLabels}><span>Dézoom max</span><span>Zoom max</span></div>
             </div>
-          </div>
+          </div>}
 
-          <div className={styles.settingsSection}>
+          {activeSection === 'correction' && <div className={styles.settingsSection}>
             <p className={styles.settingsSectionTitle}>Correction d'horizontalité</p>
             <p className={styles.settingsSectionHint}>Redresse le panorama. Réglez en regardant le viewer derrière.</p>
             {[
@@ -2047,9 +2630,31 @@ function SceneSettingsModal({ scene, viewer, onSave, onSaveAll, onClose }) {
                 </div>
               </div>
             ))}
-          </div>
+          </div>}
 
-          <div className={styles.settingsSection}>
+          {activeSection === 'image' && <div className={styles.settingsSection}>
+            <p className={styles.settingsSectionTitle}>Réglages image</p>
+            <p className={styles.settingsSectionHint}>Temps réel — visible par tous les visiteurs.</p>
+            {[
+              { label: 'Luminosité',       val: brightness, set: v => { setBrightness(v); applyFilters(v, contrast, saturation, sharpness, warmth) }, min: 50, max: 150, step: 1,   unit: '%', zero: 100 },
+              { label: 'Contraste',         val: contrast,   set: v => { setContrast(v);   applyFilters(brightness, v, saturation, sharpness, warmth) }, min: 50, max: 150, step: 1,   unit: '%', zero: 100 },
+              { label: 'Saturation',        val: saturation, set: v => { setSaturation(v); applyFilters(brightness, contrast, v, sharpness, warmth)  }, min: 0,  max: 200, step: 1,   unit: '%', zero: 100 },
+              { label: 'Chaleur',           val: warmth,     set: v => { setWarmth(v);     applyFilters(brightness, contrast, saturation, sharpness, v) }, min: -100, max: 100, step: 1, unit: '', zero: 0 },
+              { label: 'Hautes lumières',   val: highlights, set: v => { setHighlights(v); applyFilters(brightness, contrast, saturation, sharpness, warmth, v, shadows) }, min: -100, max: 0, step: 1, unit: '', zero: 0 },
+              { label: 'Ombres',            val: shadows,    set: v => { setShadows(v);    applyFilters(brightness, contrast, saturation, sharpness, warmth, highlights, v) }, min: 0, max: 100, step: 1, unit: '', zero: 0 },
+              { label: 'Netteté',           val: sharpness,  set: v => { setSharpness(v);  applyFilters(brightness, contrast, saturation, v, warmth)  }, min: -5,  max: 10,  step: 0.5, unit: '', zero: 0 },
+            ].map(({ label, val, set, min, max, step, unit, zero }) => (
+              <div key={label} className={styles.modalField}>
+                <label className={styles.modalLabel}>{label} — <strong>{val > 0 && zero === 0 ? '+' : ''}{val}{unit}</strong></label>
+                <div className={styles.correctionRow}>
+                  <input type="range" min={min} max={max} step={step} value={val} className={styles.slider} onChange={e => set(+e.target.value)} />
+                  <button className={styles.resetSmall} onClick={() => set(zero)}>↺</button>
+                </div>
+              </div>
+            ))}
+          </div>}
+
+          {activeSection === 'autorot' && <div className={styles.settingsSection}>
             <p className={styles.settingsSectionTitle}>Autorotation</p>
             <p className={styles.settingsSectionHint}>Reprend après 3s d'inactivité. Désactivée si gyroscope actif.</p>
             <div className={styles.autorotToggle}>
@@ -2073,7 +2678,7 @@ function SceneSettingsModal({ scene, viewer, onSave, onSaveAll, onClose }) {
                 </div>
               </div>
             </>}
-          </div>
+          </div>}
         </div>
         <div className={styles.modalActions}>
           <button className={styles.modalCancel} onClick={() => { setZoomDefault(50); setZoomMin(10); setZoomMax(90); setCorrectionTilt(0); setCorrectionPan(0); setCorrectionRoll(0); applyToViewer({zd:50,zn:10,zx:90,pt:0,pp:0,pr:0}) }}>↺ Reset</button>

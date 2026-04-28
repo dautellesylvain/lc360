@@ -215,17 +215,7 @@ function EmptyState({ onNavigate }) {
 }
 
 function ProjectCard({ project, onOpen, onShare, onEdit, onAnalytics, isPRO }) {
-  const [menuOpen, setMenuOpen] = useState(false)
-  const menuRef = useRef(null)
   const isPublished = project.published === true
-
-  // Fermer le menu si clic extérieur
-  useEffect(() => {
-    if (!menuOpen) return
-    const handler = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false) }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [menuOpen])
 
   return (
     <article className={styles.card}>
@@ -244,31 +234,6 @@ function ProjectCard({ project, onOpen, onShare, onEdit, onAnalytics, isPRO }) {
       <div className={styles.cardBody}>
         <div className={styles.cardTop}>
           <h3 className={styles.cardTitle}>{project.name || 'Sans titre'}</h3>
-          <div className={styles.menuWrap} ref={menuRef}>
-            <button className={styles.menuBtn} onClick={e => { e.stopPropagation(); setMenuOpen(v => !v) }}>⋯</button>
-            {menuOpen && (
-              <div className={styles.menu}>
-                <button className={styles.menuItem} onClick={() => { setMenuOpen(false); onOpen() }}>
-                  ✏ Modifier
-                </button>
-                <button className={styles.menuItem} onClick={() => { setMenuOpen(false); onEdit() }}>
-                  ✏ Modifier
-                </button>
-                <button className={styles.menuItem} onClick={() => { setMenuOpen(false); onAnalytics() }}>
-                  {!isPRO && '⭐ '}                  📊 Statistiques
-                </button>
-                <button className={`${styles.menuItem} ${project.shareEnabled ? styles.menuItemActive : ''}`}
-                  onClick={() => { setMenuOpen(false); onShare() }}>
-                  🔗 {project.shareEnabled ? 'Gérer le partage' : 'Partager'}
-                </button>
-                <div className={styles.menuDivider} />
-                <button className={`${styles.menuItem} ${styles.menuItemDanger}`}
-                  onClick={() => { setMenuOpen(false); onEdit() }}>
-                  🗑 Supprimer
-                </button>
-              </div>
-            )}
-          </div>
         </div>
 
         {project.location && <p className={styles.location}>{project.location}</p>}
@@ -291,7 +256,15 @@ function ProjectCard({ project, onOpen, onShare, onEdit, onAnalytics, isPRO }) {
         <button className={`${styles.btnShare} ${project.shareEnabled ? styles.btnShareActive : ''}`} onClick={onShare}>
           🔗 {project.shareEnabled ? 'Partagé' : 'Partager'}
         </button>
-        <button className={styles.btnEdit} onClick={onEdit} title="Modifier">✏</button>
+        {project.shareEnabled && project.shareToken && (
+          <button
+            className={styles.btnEdit}
+            title="Lancer la visite"
+            onClick={() => window.open(`/view/${project.shareToken}`, '_blank')}
+            style={{ color: '#22c55e', fontSize: 16 }}
+          >▶</button>
+        )}
+        <button className={styles.btnEdit} onClick={onEdit} title="Paramètres">⚙</button>
         <button className={styles.btnEdit} onClick={onAnalytics} title="Statistiques" style={{position:'relative'}}>
           📊
           {!isPRO && <span style={{position:'absolute',top:-4,right:-4,background:'#f59e0b',color:'#fff',fontSize:8,fontWeight:800,borderRadius:20,padding:'1px 3px',lineHeight:1.2}}>PRO</span>}

@@ -43,19 +43,31 @@ export default function Account() {
 
   const handleGenerate = async () => {
     setGenerating(true)
-    const k = await generateActivationKey(user.uid)
-    setKey(k)
-    setShowKey(true)
-    setGenerating(false)
+    try {
+      const k = await generateActivationKey(user.uid)
+      setKey(k)
+      setShowKey(true)
+    } catch (err) {
+      console.error('Erreur génération clé:', err)
+      alert('Erreur lors de la génération de la clé. Vérifiez la console et réessayez.')
+    } finally {
+      setGenerating(false)
+    }
   }
 
   const handleRevoke = async () => {
     setRevoking(true)
-    await revokeActivationKey(user.uid)
-    setKey(null)
-    setShowKey(false)
-    setConfirmRevoke(false)
-    setRevoking(false)
+    try {
+      await revokeActivationKey(user.uid)
+      setKey(null)
+      setShowKey(false)
+      setConfirmRevoke(false)
+    } catch (err) {
+      console.error('Erreur révocation clé:', err)
+      alert('Erreur lors de la révocation. Réessayez.')
+    } finally {
+      setRevoking(false)
+    }
   }
 
   const handleCopy = async () => {
